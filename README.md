@@ -31,7 +31,7 @@ Die Dateien sind nicht signiert. Windows zeigt beim ersten Start deshalb eventue
 ### Automatische Builds (GitHub Actions)
 
 `.github/workflows/build.yml` baut bei jedem Push die Windows- und Linux-Dateien. Du findest sie unter *Actions → Build → Artifacts*.
-Ein neues Release erstellst du, indem du die Version in `package.json` erhöhst und einen Tag pushst:
+Für ein neues Release erhöhst du die Version in `package.json` und startest dann *Actions → Build → Run workflow* (Häkchen „release“ gesetzt lassen). Alternativ pushst du einen Tag:
 
 ```bash
 git tag v0.2.0
