@@ -36,6 +36,8 @@ jobs:
             files: |
               dist/*.AppImage
               dist/*.deb
+              dist/*.rpm
+              dist/*.flatpak
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -46,6 +48,14 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      # rpm (Fedora/Bazzite) und Flatpak (Bazzite, SteamOS, alle Distributionen) brauchen eigene Werkzeuge
+      - name: Linux-Werkzeuge installieren
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm flatpak flatpak-builder
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
       - name: Paket bauen
         run: npm run ${{ matrix.script }}

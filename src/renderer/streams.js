@@ -46,8 +46,17 @@
     const full = channels.length >= maxStreams;
     addBtn.disabled = full;
     addInput.disabled = full;
-    addInput.placeholder = full ? 'Maximal 4 Streams – schließe einen mit ✕' : 'Kanalname, z. B. papaplatte';
+    addInput.placeholder = full ? 'Maximal 4 Streams – schließe einen mit ✕' : 'Kanalname oder Twitch-Link';
   }
+
+  // Links (z. B. aus dem Browser-Fenster oder einem anderen Browser) ins Fenster ziehen
+  document.addEventListener('dragover', (e) => e.preventDefault());
+  document.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const text = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+    const links = text.split(/\r?\n/).filter((l) => l && !l.startsWith('#')).join(' ');
+    if (links) ui.add(links);
+  });
 
   window.twitch.onChannels(render);
   render(await window.twitch.getChannels());

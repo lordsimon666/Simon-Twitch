@@ -39,7 +39,8 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "Simon-Twitch-Setup.${ext}"
     },
     "linux": {
       "target": [
@@ -54,15 +55,52 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "rpm",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "flatpak",
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "category": "AudioVideo",
-      "maintainer": "lordsimon666 <lordsimon666@users.noreply.github.com>"
+      "icon": "build/icon.png",
+      "maintainer": "lordsimon666 <lordsimon666@users.noreply.github.com>",
+      "synopsis": "Bis zu 4 Twitch-Streams gleichzeitig"
     },
-    "artifactName": "Simon-Twitch-${version}-${os}-${arch}.${ext}",
     "portable": {
-      "artifactName": "Simon-Twitch-${version}-portable.${ext}"
-    }
+      "artifactName": "Simon-Twitch-Portable.${ext}"
+    },
+    "appImage": {
+      "artifactName": "Simon-Twitch.${ext}"
+    },
+    "deb": {
+      "artifactName": "Simon-Twitch.${ext}"
+    },
+    "rpm": {
+      "artifactName": "Simon-Twitch.${ext}"
+    },
+    "flatpak": {
+      "artifactName": "Simon-Twitch.${ext}",
+      "runtimeVersion": "24.08",
+      "baseVersion": "24.08",
+      "finishArgs": [
+        "--socket=wayland",
+        "--socket=x11",
+        "--share=ipc",
+        "--device=dri",
+        "--socket=pulseaudio",
+        "--share=network",
+        "--talk-name=org.freedesktop.Notifications"
+      ]
+    },
+    "icon": "build/icon.png"
   },
   "author": {
     "name": "lordsimon666",

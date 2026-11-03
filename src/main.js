@@ -12,6 +12,7 @@ const path = require('path');
 const MAX_STREAMS = 4;
 const CHANNEL_RE = /^[a-zA-Z0-9_]{1,25}$/;
 const RENDERER_DIR = path.join(__dirname, 'renderer');
+const APP_ICON = path.join(__dirname, 'icon.png');
 
 // Twitch-Embeds verlangen einen "parent"-Hostnamen. file:// wird nicht akzeptiert,
 // deshalb liefern wir die Oberfläche über einen lokalen HTTP-Server auf localhost aus.
@@ -128,6 +129,7 @@ function createWindow(name) {
     title: titles[name],
     backgroundColor: '#0e0e10',
     autoHideMenuBar: true,
+    icon: APP_ICON,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -222,6 +224,7 @@ function openLoginPopup() {
     title: 'Bei Twitch anmelden',
     backgroundColor: '#0e0e10',
     autoHideMenuBar: true,
+    icon: APP_ICON,
     parent: loginWindow && !loginWindow.isDestroyed() ? loginWindow : undefined,
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
@@ -251,6 +254,7 @@ function createLoginWindow() {
     title: 'Simon Twitch – Anmelden',
     backgroundColor: '#0e0e10',
     autoHideMenuBar: true,
+    icon: APP_ICON,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -290,17 +294,42 @@ function broadcast() {
   sendAll('channels:changed', state.channels);
 }
 
-function addChannel(raw) {
-  const channel = String(raw || '').trim().replace(/^@/, '').toLowerCase();
-  if (!CHANNEL_RE.test(channel)) return { ok: false, error: `„${raw}“ ist kein gültiger Kanalname.` };
-  if (state.channels.includes(channel)) return { ok: false, error: `${channel} läuft bereits.` };
+// Wandelt eine Eingabe in einen Kanalnamen um. Erlaubt sind Namen ("papaplatte", "@papaplatte")
+// und Twitch-Links ("https://www.twitch.tv/papaplatte", "twitch.tv/papaplatte",
+// "m.twitch.tv/papaplatte", Popout-/Embed-Links, "player.twitch.tv/?channel=papaplatte").
+function parseChannelInput(raw) {
+  const text = String(raw || '').trim().replace(/^@/, '');
+  if (CHANNEL_RE.test(text)) return { channel: text.toLowerCase() };
+  if (/twitch\.tv/i.test(text) || /^https?:\/\//i.test(text)) {
+    const channel = channelFromUrl(/^https?:\/\//i.test(text) ? text : `https://${text}`);
+    return channel ? { channel } : { error: `Im Link „${text}“ steckt kein Twitch-Kanal.` };
+  }
+  return { error: `„${text}“ ist kein gültiger Kanalname oder Twitch-Link.` };
+}
+
+function addOne(raw) {
+  const { channel, error } = parseChannelInput(raw);
+  if (error) return error;
+  if (state.channels.includes(channel)) return `${channel} läuft bereits.`;
   if (state.channels.length >= MAX_STREAMS) {
-    return { ok: false, error: `Maximal ${MAX_STREAMS} Streams – schließe zuerst einen mit dem X.` };
+    return `Maximal ${MAX_STREAMS} Streams – schließe zuerst einen mit dem X.`;
   }
   state.channels.push(channel);
-  saveState();
-  broadcast();
-  return { ok: true, channels: state.channels };
+  return null;
+}
+
+// Mehrere Einträge auf einmal sind möglich (durch Leerzeichen, Komma oder Zeilenumbruch getrennt)
+function addChannel(raw) {
+  const parts = String(raw || '').split(/[\s,;]+/).filter(Boolean);
+  if (!parts.length) return { ok: false, error: 'Bitte einen Kanalnamen oder Twitch-Link eingeben.' };
+  const before = state.channels.length;
+  const errors = parts.map(addOne).filter(Boolean);
+  const added = state.channels.length - before;
+  if (added) {
+    saveState();
+    broadcast();
+  }
+  return { ok: added > 0, error: errors.join(' '), channels: state.channels };
 }
 
 function removeChannel(channel) {
@@ -330,8 +359,14 @@ const RESERVED_PATHS = new Set([
 function channelFromUrl(rawUrl) {
   try {
     const url = new URL(rawUrl);
-    if (!/(^|\.)twitch\.tv$/.test(url.hostname)) return null;
-    const first = url.pathname.split('/').filter(Boolean)[0];
+    if (!/(^|\.)twitch\.tv$/i.test(url.hostname)) return null;
+    // player.twitch.tv/?channel=name
+    const param = url.searchParams.get('channel');
+    if (param && CHANNEL_RE.test(param)) return param.toLowerCase();
+    const parts = url.pathname.split('/').filter(Boolean);
+    // twitch.tv/popout/name/chat, twitch.tv/embed/name/chat, twitch.tv/moderator/name
+    let first = parts[0];
+    if (first && ['popout', 'embed', 'moderator'].includes(first.toLowerCase())) first = parts[1];
     if (!first || RESERVED_PATHS.has(first.toLowerCase()) || !CHANNEL_RE.test(first)) return null;
     return first.toLowerCase();
   } catch {

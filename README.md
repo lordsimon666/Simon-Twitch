@@ -2,6 +2,8 @@
 
 Ein Twitch-Client für Windows (Linux-Port vorbereitet), mit dem du **bis zu 4 Streams gleichzeitig** schauen kannst.
 
+Streams fügst du per **Kanalname oder Twitch-Link** hinzu (z. B. `papaplatte`, `twitch.tv/papaplatte` oder `https://www.twitch.tv/papaplatte`). Mehrere Einträge auf einmal trennst du mit Leerzeichen oder Komma. Links kannst du auch einfach ins Stream-Fenster ziehen.
+
 Die App besteht aus drei Fenstern:
 
 | Fenster | Inhalt |
@@ -20,14 +22,20 @@ Die Anmeldung gilt für die ganze App (Streams, Chats, Browser). Über den Butto
 
 ## Download
 
-Fertige Dateien gibt es unter **[Releases](https://github.com/lordsimon666/Simon-Twitch/releases)**:
+Fertige Dateien gibt es unter **[Releases](https://github.com/lordsimon666/Simon-Twitch/releases/latest)**. Die Dateinamen enthalten keine Versionsnummer, deshalb zeigen diese Links immer auf die neueste Version:
 
-| Datei | Für |
-|---|---|
-| `Simon-Twitch-x.y.z-win-x64.exe` | Windows-Installer |
-| `Simon-Twitch-x.y.z-portable.exe` | Windows ohne Installation, einfach starten |
-| `Simon-Twitch-x.y.z-linux-x86_64.AppImage` | Linux, alle Distributionen (`chmod +x` und starten) |
-| `Simon-Twitch-x.y.z-linux-amd64.deb` | Debian/Ubuntu/Mint (`sudo apt install ./Simon-Twitch-…deb`) |
+| System | Datei | Installation |
+|---|---|---|
+| Windows | [Simon-Twitch-Setup.exe](https://github.com/lordsimon666/Simon-Twitch/releases/latest/download/Simon-Twitch-Setup.exe) | Installer starten |
+| Windows | [Simon-Twitch-Portable.exe](https://github.com/lordsimon666/Simon-Twitch/releases/latest/download/Simon-Twitch-Portable.exe) | Ohne Installation, einfach starten |
+| **Bazzite** / SteamOS / jede Distribution | [Simon-Twitch.flatpak](https://github.com/lordsimon666/Simon-Twitch/releases/latest/download/Simon-Twitch.flatpak) | Doppelklick (öffnet Bazaar/Discover) oder `flatpak install --user Simon-Twitch.flatpak` |
+| Bazzite / Fedora (Alternative) | [Simon-Twitch.rpm](https://github.com/lordsimon666/Simon-Twitch/releases/latest/download/Simon-Twitch.rpm) | Fedora: `sudo dnf install ./Simon-Twitch.rpm` – Bazzite: `rpm-ostree install ./Simon-Twitch.rpm`, danach neu starten |
+| Linux allgemein | [Simon-Twitch.AppImage](https://github.com/lordsimon666/Simon-Twitch/releases/latest/download/Simon-Twitch.AppImage) | `chmod +x Simon-Twitch.AppImage` und starten (auf Bazzite z. B. mit Gear Lever) |
+| Debian / Ubuntu / Mint | [Simon-Twitch.deb](https://github.com/lordsimon666/Simon-Twitch/releases/latest/download/Simon-Twitch.deb) | `sudo apt install ./Simon-Twitch.deb` |
+
+**Bazzite:** Nimm am besten die **.flatpak**-Datei. Bazzite ist ein „atomares“ System, Flatpak ist dort der vorgesehene Weg und braucht keinen Neustart.
+Falls Flatpak das Freedesktop-/Electron-Laufzeitpaket noch nicht hat, lädt es dieses beim Installieren automatisch von Flathub (ist auf Bazzite schon eingerichtet).
+Danach startest du die App aus dem Menü oder mit `flatpak run de.simon.twitch`.
 
 Die Dateien sind nicht signiert. Windows zeigt beim ersten Start deshalb eventuell „Der Computer wurde durch Windows geschützt“. Klicke dann auf *Weitere Informationen → Trotzdem ausführen*.
 

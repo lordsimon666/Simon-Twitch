@@ -18,7 +18,7 @@ window.ui = {
   // Fügt einen Kanal hinzu und zeigt Fehler als Hinweis an
   async add(channel) {
     const res = await window.twitch.addChannel(channel);
-    if (!res.ok) this.toast(res.error);
+    if (res.error) this.toast(res.error);
     return res.ok;
   },
 
