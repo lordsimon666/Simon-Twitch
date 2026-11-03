@@ -1,0 +1,25 @@
+{
+  "name": "simon-twitch",
+  "productName": "Simon Twitch",
+  "version": "0.1.0",
+  "description": "Multi-Stream Twitch Client: bis zu 4 Streams, Chat- und Browser-Fenster",
+  "main": "src/main.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "de.simon.twitch",
+    "productName": "Simon Twitch",
+    "files": ["src/**/*", "package.json"],
+    "win": { "target": ["nsis", "portable"] },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true },
+    "linux": { "target": ["AppImage", "deb"], "category": "AudioVideo" }
+  }
+}

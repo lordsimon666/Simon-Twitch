@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Simon Twitch – Streams</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <form class="toolbar" id="add-form">
+    <span class="brand">Simon Twitch</span>
+    <input type="text" id="add-input" placeholder="Kanalname, z. B. papaplatte" autocomplete="off" spellcheck="false">
+    <button type="submit" class="primary" id="add-btn">Hinzufügen</button>
+    <span class="count" id="count"></span>
+    <span class="spacer"></span>
+    <button type="button" id="open-chat" title="Chat-Fenster (Strg+2)">Chat</button>
+    <button type="button" id="open-browse" title="Browser-Fenster (Strg+3)">Browser</button>
+  </form>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty">
+    <h2>Keine Streams geöffnet</h2>
+    <div>Gib oben einen Kanalnamen ein oder wähle im Browser-Fenster einen Stream aus.<br>
+      Es können bis zu 4 Streams gleichzeitig laufen.</div>
+  </div>
+  <script src="common.js"></script>
+  <script src="streams.js"></script>
+</body>
+</html>

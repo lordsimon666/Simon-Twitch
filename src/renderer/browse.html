@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Simon Twitch – Browser</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <form class="toolbar" id="nav-form">
+    <button type="button" class="icon" id="back" title="Zurück">◀</button>
+    <button type="button" class="icon" id="forward" title="Vor">▶</button>
+    <button type="button" class="icon" id="reload" title="Neu laden">⟳</button>
+    <button type="button" class="icon" id="home" title="Startseite">⌂</button>
+    <input type="text" class="url" id="url" placeholder="Twitch durchsuchen oder Adresse eingeben" spellcheck="false" autocomplete="off">
+    <button type="button" class="primary" id="add" disabled title="Den gerade geöffneten Kanal ins Stream-Fenster holen">+ Zum Multi-Stream</button>
+  </form>
+  <div class="browse-view">
+    <webview id="view" src="https://www.twitch.tv/directory" allowpopups></webview>
+  </div>
+  <script src="common.js"></script>
+  <script src="browse.js"></script>
+</body>
+</html>
