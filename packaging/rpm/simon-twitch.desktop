@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Simon Twitch
+Comment=Bis zu 4 Twitch-Streams gleichzeitig
+Exec=/opt/simon-twitch/simon-twitch %U
+Icon=simon-twitch
+Terminal=false
+Type=Application
+Categories=AudioVideo;Video;Network;
+StartupWMClass=Simon Twitch

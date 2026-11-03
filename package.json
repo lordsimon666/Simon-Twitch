@@ -9,7 +9,7 @@
     "start": "electron .",
     "dist:win": "electron-builder --win --publish never",
     "dist:linux": "electron-builder --linux AppImage deb flatpak --publish never",
-    "dist:rpm": "electron-builder --linux rpm --publish never"
+    "dist:rpm": "bash packaging/rpm/build-rpm.sh"
   },
   "devDependencies": {
     "electron": "^33.2.1",
@@ -58,12 +58,6 @@
           ]
         },
         {
-          "target": "rpm",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
           "target": "flatpak",
           "arch": [
             "x64"
@@ -82,9 +76,6 @@
       "artifactName": "Simon-Twitch.${ext}"
     },
     "deb": {
-      "artifactName": "Simon-Twitch.${ext}"
-    },
-    "rpm": {
       "artifactName": "Simon-Twitch.${ext}"
     },
     "flatpak": {
