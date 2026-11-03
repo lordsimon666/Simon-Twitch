@@ -15,6 +15,29 @@ Offene Streams und Fensterpositionen werden gespeichert und beim nächsten Start
 
 Wenn du dich im Browser-Fenster oder im Chat bei Twitch anmeldest, gilt die Anmeldung für alle Fenster. Danach kannst du direkt mitschreiben.
 
+## Download
+
+Fertige Dateien gibt es unter **[Releases](https://github.com/lordsimon666/Simon-Twitch/releases)**:
+
+| Datei | Für |
+|---|---|
+| `Simon-Twitch-x.y.z-win-x64.exe` | Windows-Installer |
+| `Simon-Twitch-x.y.z-portable.exe` | Windows ohne Installation, einfach starten |
+| `Simon-Twitch-x.y.z-linux-x86_64.AppImage` | Linux, alle Distributionen (`chmod +x` und starten) |
+| `Simon-Twitch-x.y.z-linux-amd64.deb` | Debian/Ubuntu/Mint (`sudo apt install ./Simon-Twitch-…deb`) |
+
+Die Dateien sind nicht signiert. Windows zeigt beim ersten Start deshalb eventuell „Der Computer wurde durch Windows geschützt“. Klicke dann auf *Weitere Informationen → Trotzdem ausführen*.
+
+### Automatische Builds (GitHub Actions)
+
+`.github/workflows/build.yml` baut bei jedem Push die Windows- und Linux-Dateien. Du findest sie unter *Actions → Build → Artifacts*.
+Ein neues Release erstellst du, indem du die Version in `package.json` erhöhst und einen Tag pushst:
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
 ## Starten (Entwicklung)
 
 Du brauchst [Node.js](https://nodejs.org) 18 oder neuer.

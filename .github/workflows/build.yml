@@ -1,0 +1,62 @@
+name: Build
+
+# Baut bei jedem Push die Windows-.exe und die Linux-Pakete.
+# Wird ein Tag wie "v0.1.0" gepusht, entsteht zusätzlich ein GitHub-Release mit allen Dateien.
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            script: dist:win
+            name: windows
+            files: |
+              dist/*.exe
+          - os: ubuntu-latest
+            script: dist:linux
+            name: linux
+            files: |
+              dist/*.AppImage
+              dist/*.deb
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Paket bauen
+        run: npm run ${{ matrix.script }}
+        env:
+          # Keine Code-Signatur (kein Zertifikat vorhanden)
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Als Build-Artefakt hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: simon-twitch-${{ matrix.name }}
+          path: ${{ matrix.files }}
+          if-no-files-found: error
+
+      - name: An GitHub-Release anhängen
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.files }}
+          generate_release_notes: true
