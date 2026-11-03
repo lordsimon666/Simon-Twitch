@@ -4,8 +4,9 @@
 // Drei Fenster: Streams (bis zu 4), Chat (Chats der Streams), Browser (twitch.tv).
 // Plattformneutral geschrieben (Windows zuerst, Linux-Build über electron-builder).
 
-const { app, BrowserWindow, ipcMain, Menu, shell, screen, session } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, shell, screen, session, clipboard } = require('electron');
 const http = require('http');
+const { RaidWatcher } = require('./raids');
 const fs = require('fs');
 const path = require('path');
 
@@ -22,7 +23,7 @@ let baseUrl = null;
 // Persistenter Zustand (Kanäle + Fensterpositionen)
 // ---------------------------------------------------------------------------
 const statePath = () => path.join(app.getPath('userData'), 'state.json');
-let state = { channels: [], bounds: {}, skipLoginPrompt: false };
+let state = { channels: [], bounds: {}, skipLoginPrompt: false, followRaids: true };
 
 function loadState() {
   try {
@@ -32,6 +33,7 @@ function loadState() {
       : [];
     state.bounds = data.bounds && typeof data.bounds === 'object' ? data.bounds : {};
     state.skipLoginPrompt = data.skipLoginPrompt === true;
+    state.followRaids = data.followRaids !== false;
   } catch {
     /* erster Start oder defekte Datei */
   }
@@ -292,6 +294,56 @@ ipcMain.on('auth:guest', (_e, remember) => {
 // ---------------------------------------------------------------------------
 function broadcast() {
   sendAll('channels:changed', state.channels);
+  raids.setChannels(state.channels);
+}
+
+function toast(message, name = 'streams') {
+  const win = windows[name];
+  if (win && !win.isDestroyed()) win.webContents.send('toast', message);
+}
+
+// ---------------------------------------------------------------------------
+// Raids: raidet ein offener Kanal, wechselt seine Kachel (und sein Chat) zum Ziel
+// ---------------------------------------------------------------------------
+const raids = new RaidWatcher();
+const announcedRaids = new Set();
+
+raids.on('raid-pending', ({ from, to }) => {
+  const key = `${from}>${to}`;
+  if (announcedRaids.has(key) || !state.channels.includes(from)) return;
+  announcedRaids.add(key);
+  toast(state.followRaids
+    ? `${from} raidet gleich ${to} – die Kachel wechselt automatisch.`
+    : `${from} raidet gleich ${to}.`);
+});
+
+raids.on('raid-cancel', ({ from, to }) => {
+  announcedRaids.delete(`${from}>${to}`);
+  if (state.channels.includes(from)) toast(`${from} hat den Raid abgebrochen.`);
+});
+
+raids.on('raid', ({ from, to }) => {
+  announcedRaids.delete(`${from}>${to}`);
+  if (!state.channels.includes(from)) return;
+  if (!state.followRaids) {
+    toast(`${from} hat ${to} geraidet. Rechtsklick → „${to} öffnen“ oder Kanal hinzufügen.`);
+    return;
+  }
+  followRaid(from, to);
+});
+
+function followRaid(from, to) {
+  const index = state.channels.indexOf(from);
+  if (index === -1) return;
+  if (state.channels.includes(to)) {
+    state.channels.splice(index, 1);   // Ziel läuft schon – alte Kachel einfach schließen
+    toast(`${from} hat ${to} geraidet – ${to} läuft bereits.`);
+  } else {
+    state.channels[index] = to;        // gleiche Position im Raster
+    toast(`${from} hat ${to} geraidet – du bist mitgekommen.`);
+  }
+  saveState();
+  broadcast();
 }
 
 // Wandelt eine Eingabe in einen Kanalnamen um. Erlaubt sind Namen ("papaplatte", "@papaplatte")
@@ -342,6 +394,12 @@ function removeChannel(channel) {
 ipcMain.handle('channels:get', () => state.channels);
 ipcMain.handle('channels:add', (_e, channel) => addChannel(channel));
 ipcMain.handle('channels:remove', (_e, channel) => removeChannel(channel));
+ipcMain.handle('channels:replace', (_e, from, to) => {
+  const parsed = parseChannelInput(to);
+  if (parsed.error) return { ok: false, error: parsed.error };
+  followRaid(from, parsed.channel);
+  return { ok: true, channels: state.channels };
+});
 ipcMain.handle('config:get', () => ({ maxStreams: MAX_STREAMS, parent: 'localhost' }));
 ipcMain.on('window:open', (_e, name) => {
   if (name in windows) createWindow(name);
@@ -379,6 +437,107 @@ ipcMain.handle('url:channel', (_e, url) => channelFromUrl(url));
 // ---------------------------------------------------------------------------
 // Sicherheit & Verhalten eingebetteter Inhalte
 // ---------------------------------------------------------------------------
+// Kanal aus einem eingebetteten Player-/Chat-Frame ermitteln
+function channelFromFrame(url) {
+  try {
+    const u = new URL(url);
+    if (u.hostname === 'player.twitch.tv') return u.searchParams.get('channel');
+    const m = /^\/embed\/([a-zA-Z0-9_]+)\/chat/.exec(u.pathname);
+    if (u.hostname.endsWith('twitch.tv') && m) return m[1].toLowerCase();
+  } catch { /* kein gültiger Link */ }
+  return null;
+}
+
+function openInBrowser(url) {
+  const win = createWindow('browse');
+  win.webContents.send('view:load', url);
+}
+
+const LOGIN_URL = /^https:\/\/((id|passport)\.twitch\.tv\/|www\.twitch\.tv\/(login|signup|passport-callback)|twitch\.tv\/(login|signup))/;
+
+function buildContextMenu(contents, params) {
+  const items = [];
+  const sep = () => { if (items.length && items[items.length - 1].type !== 'separator') items.push({ type: 'separator' }); };
+  const isWebview = contents.getType() === 'webview';
+  const frameChannel = channelFromFrame(params.frameURL || '');
+  const linkChannel = channelFromUrl(params.linkURL);
+  const pageChannel = isWebview ? channelFromUrl(contents.getURL()) : null;
+
+  // Eingabefelder (z. B. Chat-Nachricht): Ausschneiden/Kopieren/Einfügen
+  if (params.isEditable) {
+    items.push(
+      { label: 'Rückgängig', role: 'undo', enabled: params.editFlags.canUndo },
+      { label: 'Wiederholen', role: 'redo', enabled: params.editFlags.canRedo },
+      { type: 'separator' },
+      { label: 'Ausschneiden', role: 'cut', enabled: params.editFlags.canCut },
+      { label: 'Kopieren', role: 'copy', enabled: params.editFlags.canCopy },
+      { label: 'Einfügen', role: 'paste', enabled: params.editFlags.canPaste },
+      { label: 'Alles auswählen', role: 'selectAll' },
+    );
+    if (params.dictionarySuggestions?.length) {
+      sep();
+      for (const word of params.dictionarySuggestions.slice(0, 5)) {
+        items.push({ label: word, click: () => contents.replaceMisspelling(word) });
+      }
+    }
+  } else if (params.selectionText) {
+    items.push({ label: 'Kopieren', role: 'copy' });
+  }
+
+  // Links
+  if (params.linkURL) {
+    sep();
+    if (linkChannel) {
+      items.push({ label: `„${linkChannel}“ zum Multi-Stream hinzufügen`, click: () => toast(addChannel(linkChannel).error || `${linkChannel} hinzugefügt.`, isWebview ? 'browse' : 'streams') });
+      if (frameChannel && linkChannel !== frameChannel && state.channels.includes(frameChannel)) {
+        items.push({ label: `„${frameChannel}“ durch „${linkChannel}“ ersetzen`, click: () => followRaid(frameChannel, linkChannel) });
+      }
+    }
+    if (/twitch\.tv/.test(params.linkURL) && !isWebview) items.push({ label: 'Im Browser-Fenster öffnen', click: () => openInBrowser(params.linkURL) });
+    items.push({ label: 'Im Systembrowser öffnen', click: () => shell.openExternal(params.linkURL) });
+    items.push({ label: 'Link kopieren', click: () => clipboard.writeText(params.linkURL) });
+  }
+
+  // Stream-Kachel bzw. Chat eines Kanals
+  if (frameChannel && state.channels.includes(frameChannel)) {
+    sep();
+    items.push(
+      { label: `${frameChannel}: neu laden`, click: () => params.frame?.reload() },
+      { label: `${frameChannel}: auf twitch.tv öffnen`, click: () => openInBrowser(`https://www.twitch.tv/${frameChannel}`) },
+      { label: `${frameChannel}: schließen`, click: () => removeChannel(frameChannel) },
+    );
+  }
+
+  // Browser-Fenster
+  if (isWebview) {
+    if (pageChannel && !linkChannel) {
+      sep();
+      items.push({ label: `„${pageChannel}“ zum Multi-Stream hinzufügen`, click: () => toast(addChannel(pageChannel).error || `${pageChannel} hinzugefügt.`, 'browse') });
+    }
+    sep();
+    items.push(
+      { label: 'Zurück', enabled: contents.navigationHistory.canGoBack(), click: () => contents.navigationHistory.goBack() },
+      { label: 'Vor', enabled: contents.navigationHistory.canGoForward(), click: () => contents.navigationHistory.goForward() },
+      { label: 'Neu laden', click: () => contents.reload() },
+      { label: 'Adresse kopieren', click: () => clipboard.writeText(contents.getURL()) },
+    );
+  }
+
+  // Allgemeine Einträge für unsere eigenen Fenster
+  if (!isWebview && !frameChannel) {
+    sep();
+    items.push(
+      { label: 'Streams-Fenster', click: () => createWindow('streams') },
+      { label: 'Chat-Fenster', click: () => createWindow('chat') },
+      { label: 'Browser-Fenster', click: () => createWindow('browse') },
+      { type: 'separator' },
+      { label: 'Fenster neu laden', click: () => contents.reload() },
+    );
+  }
+  if (items[items.length - 1]?.type === 'separator') items.pop();
+  return items;
+}
+
 app.on('web-contents-created', (_e, contents) => {
   // <webview> im Browser-Fenster absichern
   contents.on('will-attach-webview', (_ev, webPreferences, params) => {
@@ -388,39 +547,42 @@ app.on('web-contents-created', (_e, contents) => {
     if (!/^https:\/\/([a-z0-9-]+\.)*twitch\.tv\//.test(params.src)) params.src = 'https://www.twitch.tv/';
   });
 
-  // Popups (z. B. Twitch-Login aus dem Chat) als eigenes Fenster, fremde Links im Systembrowser
-  contents.setWindowOpenHandler(({ url }) => {
-    if (/^https:\/\/([a-z0-9-]+\.)*(twitch\.tv|id\.twitch\.tv|passport\.twitch\.tv)\//.test(url)) {
-      return { action: 'allow', overrideBrowserWindowOptions: { autoHideMenuBar: true, backgroundColor: '#0e0e10' } };
+  // Popups: Twitch-Login als eigenes Fenster, Kanal-Links (z. B. "Raid beitreten" im Chat)
+  // im Browser-Fenster bzw. als Kachel, alles andere im Systembrowser
+  contents.setWindowOpenHandler(({ url, referrer }) => {
+    if (LOGIN_URL.test(url)) {
+      return { action: 'allow', overrideBrowserWindowOptions: { autoHideMenuBar: true, backgroundColor: '#0e0e10', icon: APP_ICON } };
     }
-    if (/^https?:\/\//.test(url)) shell.openExternal(url);
+    const target = channelFromUrl(url);
+    const source = channelFromFrame(referrer?.url || '');
+    if (target && source && state.channels.includes(source) && target !== source) {
+      followRaid(source, target);          // z. B. "Raid beitreten" im Chat von source
+    } else if (/^https:\/\/([a-z0-9-]+\.)*twitch\.tv\//.test(url)) {
+      openInBrowser(url);
+    } else if (/^https?:\/\//.test(url)) {
+      shell.openExternal(url);
+    }
     return { action: 'deny' };
   });
 
-  // Rechtsklick auf einen Kanal-Link im Browser: direkt zum Multi-Stream hinzufügen
-  if (contents.getType() === 'webview') {
-    contents.on('context-menu', (_ev, params) => {
-      const channel = channelFromUrl(params.linkURL) || channelFromUrl(contents.getURL());
-      const items = [];
-      if (channel) {
-        items.push({ label: `„${channel}“ zum Multi-Stream hinzufügen`, click: () => notify(addChannel(channel)) });
-        items.push({ type: 'separator' });
-      }
-      items.push(
-        { label: 'Zurück', enabled: contents.navigationHistory.canGoBack(), click: () => contents.navigationHistory.goBack() },
-        { label: 'Vor', enabled: contents.navigationHistory.canGoForward(), click: () => contents.navigationHistory.goForward() },
-        { label: 'Neu laden', click: () => contents.reload() },
-      );
-      if (params.selectionText) items.push({ type: 'separator' }, { role: 'copy', label: 'Kopieren' });
-      Menu.buildFromTemplate(items).popup();
-    });
-  }
-});
+  // Will ein eingebetteter Player/Chat selbst zu einer Kanalseite wechseln (Raid),
+  // wechseln wir stattdessen die Kachel
+  contents.on('will-frame-navigate', (details) => {
+    if (!details.frame || details.frame === contents.mainFrame || contents.getType() === 'webview') return;
+    const source = channelFromFrame(details.frame.url);
+    const target = channelFromFrame(details.url) || channelFromUrl(details.url);
+    if (source && target && target !== source && state.channels.includes(source)) {
+      details.preventDefault();
+      followRaid(source, target);
+    }
+  });
 
-function notify(result) {
-  const win = windows.browse;
-  if (win && !win.isDestroyed()) win.webContents.send('toast', result.ok ? 'Hinzugefügt.' : result.error);
-}
+  // Rechtsklick-Menü überall (Electron bringt von sich aus keins mit)
+  contents.on('context-menu', (_ev, params) => {
+    const items = buildContextMenu(contents, params);
+    if (items.length) Menu.buildFromTemplate(items).popup();
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Menü
@@ -456,6 +618,17 @@ function buildMenu() {
         },
       ],
     },
+    {
+      label: 'Streams',
+      submenu: [
+        {
+          label: 'Raids automatisch folgen',
+          type: 'checkbox',
+          checked: state.followRaids,
+          click: (item) => { state.followRaids = item.checked; saveState(); },
+        },
+      ],
+    },
     { label: 'Bearbeiten', submenu: [{ role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
@@ -468,7 +641,7 @@ if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   app.on('second-instance', () => createWindow('streams'));
-  app.on('before-quit', () => { quitting = true; });
+  app.on('before-quit', () => { quitting = true; raids.stop(); });
   app.on('window-all-closed', () => app.quit());
 
   // Ohne den "Electron/…"-Zusatz behandelt twitch.tv (Login, Captcha) die App wie einen normalen Chrome
@@ -487,7 +660,12 @@ if (!app.requestSingleInstanceLock()) {
       }
     });
     buildMenu();
+    raids.start();
+    raids.setChannels(state.channels);
     if (auth.loggedIn || state.skipLoginPrompt) openMain();
     else createLoginWindow();
   });
 }
+
+// Nur für automatische Tests
+if (process.env.SIMON_TWITCH_TEST) global.simonTest = { raids, buildContextMenu, state: () => state };

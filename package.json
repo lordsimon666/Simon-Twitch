@@ -1,7 +1,7 @@
 {
   "name": "simon-twitch",
   "productName": "Simon Twitch",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Multi-Stream Twitch Client: bis zu 4 Streams, Chat- und Browser-Fenster",
   "main": "src/main.js",
   "license": "MIT",
@@ -102,5 +102,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/lordsimon666/Simon-Twitch.git"
+  },
+  "dependencies": {
+    "ws": "^8.22.1"
   }
 }

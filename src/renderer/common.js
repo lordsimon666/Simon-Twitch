@@ -12,7 +12,7 @@ window.ui = {
     el.textContent = message;
     el.classList.add('show');
     clearTimeout(el._timer);
-    el._timer = setTimeout(() => el.classList.remove('show'), 2800);
+    el._timer = setTimeout(() => el.classList.remove("show"), Math.max(2800, message.length * 70));
   },
 
   // Fügt einen Kanal hinzu und zeigt Fehler als Hinweis an
@@ -49,18 +49,21 @@ window.ui = {
   },
 
   // Synchronisiert eine Liste von DOM-Elementen mit den Kanälen, ohne bestehende
-  // Elemente neu zu laden (iframes würden sonst neu starten).
+  // Elemente neu zu laden (iframes würden sonst neu starten). Neue Elemente kommen
+  // an die richtige Stelle – z. B. ersetzt ein Raid-Ziel die alte Kachel am selben Platz.
   syncList(container, channels, create) {
     const existing = new Map([...container.children].map((el) => [el.dataset.channel, el]));
     for (const [channel, el] of existing) {
       if (!channels.includes(channel)) el.remove();
     }
-    for (const channel of channels) {
-      if (!existing.has(channel)) {
-        const el = create(channel);
-        el.dataset.channel = channel;
-        container.appendChild(el);
-      }
-    }
+    channels.forEach((channel, index) => {
+      if (existing.has(channel)) return;
+      const el = create(channel);
+      el.dataset.channel = channel;
+      container.insertBefore(el, container.children[index] || null);
+    });
   },
 };
+
+// Hinweise aus dem Hauptprozess (z. B. Raids) in jedem Fenster anzeigen
+window.twitch.onToast((msg) => window.ui.toast(msg));

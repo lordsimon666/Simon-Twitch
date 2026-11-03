@@ -15,6 +15,18 @@ Die App besteht aus drei Fenstern:
 Chat und Browser lassen sich schließen und über die Buttons im Stream-Fenster oder mit **Strg+2 / Strg+3** wieder öffnen (das Menü erscheint mit **Alt**).
 Offene Streams und Fensterpositionen werden gespeichert und beim nächsten Start wiederhergestellt.
 
+### Raids
+
+Raidet ein Kanal, den du gerade schaust, wechselt seine Kachel samt Chat an derselben Stelle automatisch zum Ziel-Kanal. Kurz vorher erscheint ein Hinweis.
+Abschalten kannst du das im Menü *Streams → Raids automatisch folgen* (Menü mit **Alt** einblenden).
+
+### Rechtsklick-Menü
+
+- **Auf einem Stream oder Chat:** neu laden, auf twitch.tv öffnen, schließen
+- **Im Chat-Eingabefeld:** Ausschneiden, Kopieren, Einfügen, Rechtschreibvorschläge
+- **Auf einem Kanal-Link (z. B. im Chat):** zum Multi-Stream hinzufügen, den aktuellen Kanal damit ersetzen, im Browser-Fenster öffnen, Link kopieren
+- **Im Browser-Fenster:** Kanal hinzufügen, Zurück/Vor/Neu laden
+
 ### Anmelden
 
 Bist du beim Start nicht angemeldet, fragt dich ein kleines Fenster: **Bei Twitch anmelden** oder **Als Gast fortfahren**. Die Frage lässt sich mit „Beim Start nicht mehr fragen“ abschalten und im Menü *Konto* wieder einschalten.
