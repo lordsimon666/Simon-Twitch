@@ -46,4 +46,5 @@
   });
 
   window.twitch.onToast((msg) => ui.toast(msg));
+  window.twitch.onViewReload(() => view.reload()); // nach An-/Abmelden
 })();

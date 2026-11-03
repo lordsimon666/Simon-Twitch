@@ -8,7 +8,11 @@
 <body>
   <div class="toolbar">
     <div class="tabs" id="tabs"></div>
-    <button type="button" class="icon" id="split" title="Alle Chats nebeneinander anzeigen">▥</button>
+    <button type="button" id="account"></button>
+    <div class="segmented" role="group" aria-label="Chat-Ansicht">
+      <button type="button" id="mode-single" title="Ein Chat groß, Wechsel über die Tabs">Ein Chat</button>
+      <button type="button" id="mode-split" title="Alle Chats gleichzeitig (Splitscreen)">Splitscreen</button>
+    </div>
   </div>
   <div class="chats" id="chats"></div>
   <div class="empty" id="empty">

@@ -32,6 +32,22 @@ window.ui = {
     });
   },
 
+  // Konto-Button: "Anmelden" bzw. "<name> · Abmelden"
+  async bindAccountButton(button) {
+    const render = (auth) => {
+      button.dataset.loggedIn = auth.loggedIn ? '1' : '';
+      button.classList.toggle('primary', !auth.loggedIn);
+      button.textContent = auth.loggedIn ? `● ${auth.user || 'Angemeldet'}` : 'Anmelden';
+      button.title = auth.loggedIn ? 'Klicken zum Abmelden' : 'Bei Twitch anmelden (gilt für die ganze App)';
+    };
+    button.addEventListener('click', () => {
+      if (!button.dataset.loggedIn) window.twitch.login();
+      else if (confirm('Von Twitch abmelden?')) window.twitch.logout();
+    });
+    window.twitch.onAuth(render);
+    render(await window.twitch.getAuth());
+  },
+
   // Synchronisiert eine Liste von DOM-Elementen mit den Kanälen, ohne bestehende
   // Elemente neu zu laden (iframes würden sonst neu starten).
   syncList(container, channels, create) {

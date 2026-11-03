@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Simon Twitch – Anmelden</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="login">
+  <main class="login-card">
+    <div class="login-logo">▶</div>
+    <h1>Simon Twitch</h1>
+    <p class="muted">Melde dich bei Twitch an, um in den Chats mitzuschreiben, Kanälen zu folgen und deine gefolgten Kanäle im Browser zu sehen. Die Anmeldung gilt für alle Fenster.</p>
+
+    <button type="button" class="primary big" id="login">Bei Twitch anmelden</button>
+    <button type="button" class="big" id="guest">Als Gast fortfahren</button>
+
+    <label class="check"><input type="checkbox" id="remember"> Beim Start nicht mehr fragen</label>
+    <p class="muted small" id="status">Als Gast kannst du alle Streams und Chats ansehen, aber nicht schreiben. Du kannst dich später jederzeit über „Anmelden“ im Stream-Fenster anmelden.</p>
+  </main>
+  <script src="common.js"></script>
+  <script>
+    'use strict';
+    const status = document.getElementById('status');
+    document.getElementById('login').onclick = () => {
+      window.twitch.login();
+      status.textContent = 'Melde dich im Twitch-Fenster an. Danach geht es automatisch weiter …';
+    };
+    document.getElementById('guest').onclick = () =>
+      window.twitch.continueAsGuest(document.getElementById('remember').checked);
+  </script>
+</body>
+</html>

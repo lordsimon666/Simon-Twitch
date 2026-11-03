@@ -162,21 +162,45 @@ button.icon { padding: 5px 8px; min-width: 30px; }
 .tab.active { color: var(--text); border-bottom-color: var(--accent); }
 
 .chats { flex: 1; display: flex; min-height: 0; }
-.chat { flex: 1; display: none; flex-direction: column; min-width: 0; border-left: 1px solid var(--border); }
-.chat:first-child { border-left: 0; }
-.chat.active { display: flex; }
-.chats.split .chat { display: flex; }
+.chats.split { display: grid; gap: 2px; background: var(--border); }
+.chat { flex: 1; display: none; flex-direction: column; min-width: 0; min-height: 0; background: var(--bg); }
+.chat.active, .chats.split .chat { display: flex; }
 .chat .chat-title {
   display: none;
-  padding: 4px 8px;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px 3px 8px;
   background: var(--panel);
   border-bottom: 1px solid var(--border);
   font-weight: 600;
 }
-.chats.split .chat .chat-title { display: block; }
+.chat .chat-title span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat .chat-title button { padding: 1px 7px; font-size: 12px; }
+.chats.split .chat .chat-title { display: flex; }
 .chat iframe { flex: 1; width: 100%; border: 0; }
 
 /* ---------- Browser-Fenster ---------- */
 .toolbar .url { flex: 1; }
 .browse-view { flex: 1; display: flex; min-height: 0; }
 webview { flex: 1; }
+
+/* ---------- Anmeldefenster ---------- */
+body.login { align-items: center; justify-content: center; background: radial-gradient(circle at 50% 0%, #2a1650 0%, var(--bg) 65%); }
+.login-card { width: 100%; max-width: 360px; padding: 24px; display: flex; flex-direction: column; gap: 10px; text-align: center; }
+.login-logo {
+  width: 56px; height: 56px; margin: 0 auto 4px; border-radius: 14px;
+  background: var(--accent); display: grid; place-items: center; font-size: 24px;
+}
+.login-card h1 { margin: 0 0 2px; font-size: 22px; }
+.muted { color: var(--muted); margin: 0 0 8px; }
+.small { font-size: 12px; margin-top: 4px; }
+button.big { padding: 10px 14px; font-size: 14px; font-weight: 600; }
+.check { display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--muted); cursor: pointer; margin-top: 4px; }
+.check input { accent-color: var(--accent); }
+
+/* ---------- Chat-Ansicht umschalten ---------- */
+.segmented { display: flex; flex: 0 0 auto; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+.segmented button { border: 0; border-radius: 0; background: transparent; color: var(--muted); }
+.segmented button + button { border-left: 1px solid var(--border); }
+.segmented button.active { background: var(--accent); color: #fff; }
+.segmented button:disabled { opacity: .45; }

@@ -4,7 +4,7 @@
 // Drei Fenster: Streams (bis zu 4), Chat (Chats der Streams), Browser (twitch.tv).
 // Plattformneutral geschrieben (Windows zuerst, Linux-Build über electron-builder).
 
-const { app, BrowserWindow, ipcMain, Menu, shell, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, shell, screen, session } = require('electron');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -21,7 +21,7 @@ let baseUrl = null;
 // Persistenter Zustand (Kanäle + Fensterpositionen)
 // ---------------------------------------------------------------------------
 const statePath = () => path.join(app.getPath('userData'), 'state.json');
-let state = { channels: [], bounds: {} };
+let state = { channels: [], bounds: {}, skipLoginPrompt: false };
 
 function loadState() {
   try {
@@ -30,6 +30,7 @@ function loadState() {
       ? data.channels.filter((c) => CHANNEL_RE.test(c)).slice(0, MAX_STREAMS)
       : [];
     state.bounds = data.bounds && typeof data.bounds === 'object' ? data.bounds : {};
+    state.skipLoginPrompt = data.skipLoginPrompt === true;
   } catch {
     /* erster Start oder defekte Datei */
   }
@@ -164,12 +165,129 @@ function createWindow(name) {
 }
 
 // ---------------------------------------------------------------------------
+// Anmeldung (gilt für die ganze App: Twitch-Cookies liegen in der gemeinsamen Session)
+// ---------------------------------------------------------------------------
+let auth = { loggedIn: false, user: null };
+let loginWindow = null;   // Auswahl "Anmelden / Als Gast"
+let loginPopup = null;    // twitch.tv/login
+let mainOpened = false;
+
+async function readAuth() {
+  const cookies = await session.defaultSession.cookies.get({ domain: 'twitch.tv' });
+  const token = cookies.find((c) => c.name === 'auth-token' && c.value);
+  const login = cookies.find((c) => c.name === 'login' && c.value);
+  return { loggedIn: Boolean(token), user: token && login ? decodeURIComponent(login.value) : null };
+}
+
+function sendAll(channel, payload) {
+  const all = [...Object.values(windows), loginWindow];
+  for (const win of all) {
+    if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
+  }
+}
+
+// Chat und Browser neu laden, damit die eingebetteten Twitch-Seiten den neuen Login sehen
+function reloadTwitchViews() {
+  const chat = windows.chat;
+  if (chat && !chat.isDestroyed()) chat.webContents.reload();
+  const browse = windows.browse;
+  if (browse && !browse.isDestroyed()) browse.webContents.send('view:reload');
+}
+
+let authTimer = null;
+function scheduleAuthCheck() {
+  clearTimeout(authTimer);
+  authTimer = setTimeout(async () => {
+    const next = await readAuth();
+    const changed = next.loggedIn !== auth.loggedIn || next.user !== auth.user;
+    auth = next;
+    if (!changed) return;
+    sendAll('auth:changed', auth);
+    if (auth.loggedIn) {
+      if (loginPopup && !loginPopup.isDestroyed()) loginPopup.close();
+      if (loginWindow && !loginWindow.isDestroyed()) loginWindow.close(); // öffnet die Hauptfenster
+    }
+    reloadTwitchViews();
+  }, 500);
+}
+
+function openLoginPopup() {
+  if (loginPopup && !loginPopup.isDestroyed()) {
+    loginPopup.focus();
+    return;
+  }
+  loginPopup = new BrowserWindow({
+    width: 520,
+    height: 760,
+    title: 'Bei Twitch anmelden',
+    backgroundColor: '#0e0e10',
+    autoHideMenuBar: true,
+    parent: loginWindow && !loginWindow.isDestroyed() ? loginWindow : undefined,
+    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
+  });
+  loginPopup.loadURL('https://www.twitch.tv/login');
+  loginPopup.on('closed', () => { loginPopup = null; });
+}
+
+async function logout() {
+  const ses = session.defaultSession;
+  const cookies = await ses.cookies.get({ domain: 'twitch.tv' });
+  await Promise.all(cookies.map((c) => {
+    const host = c.domain.replace(/^\./, '');
+    return ses.cookies.remove(`http${c.secure ? 's' : ''}://${host}${c.path || '/'}`, c.name).catch(() => {});
+  }));
+  for (const origin of ['https://www.twitch.tv', 'https://twitch.tv', 'https://passport.twitch.tv', 'https://id.twitch.tv']) {
+    await ses.clearStorageData({ origin, storages: ['localstorage', 'indexdb', 'serviceworkers', 'cachestorage'] }).catch(() => {});
+  }
+  scheduleAuthCheck();
+}
+
+function createLoginWindow() {
+  loginWindow = new BrowserWindow({
+    width: 440,
+    height: 480,
+    resizable: false,
+    maximizable: false,
+    title: 'Simon Twitch – Anmelden',
+    backgroundColor: '#0e0e10',
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+  loginWindow.loadURL(`${baseUrl}/login.html`);
+  // Schließen ohne Anmeldung = als Gast weiter
+  loginWindow.on('close', () => {
+    if (!quitting) openMain();
+  });
+  loginWindow.on('closed', () => { loginWindow = null; });
+}
+
+function openMain() {
+  if (mainOpened) return;
+  mainOpened = true;
+  createWindow('streams');
+  createWindow('chat');
+  createWindow('browse');
+}
+
+ipcMain.handle('auth:get', () => auth);
+ipcMain.on('auth:login', () => openLoginPopup());
+ipcMain.on('auth:logout', () => logout());
+ipcMain.on('auth:guest', (_e, remember) => {
+  state.skipLoginPrompt = Boolean(remember);
+  saveState();
+  if (loginWindow && !loginWindow.isDestroyed()) loginWindow.close();
+});
+
+// ---------------------------------------------------------------------------
 // Kanalverwaltung
 // ---------------------------------------------------------------------------
 function broadcast() {
-  for (const win of Object.values(windows)) {
-    if (win && !win.isDestroyed()) win.webContents.send('channels:changed', state.channels);
-  }
+  sendAll('channels:changed', state.channels);
 }
 
 function addChannel(raw) {
@@ -289,6 +407,20 @@ function buildMenu() {
         { label: 'Beenden', role: 'quit' },
       ],
     },
+    {
+      label: 'Konto',
+      submenu: [
+        { label: 'Bei Twitch anmelden', click: () => openLoginPopup() },
+        { label: 'Abmelden', click: () => logout() },
+        { type: 'separator' },
+        {
+          label: 'Beim Start nach Anmeldung fragen',
+          type: 'checkbox',
+          checked: !state.skipLoginPrompt,
+          click: (item) => { state.skipLoginPrompt = !item.checked; saveState(); },
+        },
+      ],
+    },
     { label: 'Bearbeiten', submenu: [{ role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
@@ -304,13 +436,23 @@ if (!app.requestSingleInstanceLock()) {
   app.on('before-quit', () => { quitting = true; });
   app.on('window-all-closed', () => app.quit());
 
+  // Ohne den "Electron/…"-Zusatz behandelt twitch.tv (Login, Captcha) die App wie einen normalen Chrome
+  app.userAgentFallback = app.userAgentFallback
+    .replace(/\s*Electron\/\S+/, '')
+    .replace(new RegExp(`\\s*[^\\s/]+\\/${app.getVersion().replace(/\./g, '\\.')}(?=\\s)`), '');
+
   app.whenReady().then(async () => {
     loadState();
     const port = await startServer();
     baseUrl = `http://localhost:${port}`;
+    auth = await readAuth();
+    session.defaultSession.cookies.on('changed', (_ev, cookie) => {
+      if (/twitch\.tv$/.test(cookie.domain) && (cookie.name === 'auth-token' || cookie.name === 'login')) {
+        scheduleAuthCheck();
+      }
+    });
     buildMenu();
-    createWindow('streams');
-    createWindow('chat');
-    createWindow('browse');
+    if (auth.loggedIn || state.skipLoginPrompt) openMain();
+    else createLoginWindow();
   });
 }

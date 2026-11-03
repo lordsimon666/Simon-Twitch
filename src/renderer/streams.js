@@ -9,6 +9,7 @@
   const { maxStreams, parent } = await window.twitch.getConfig();
 
   ui.bindAddForm(document.getElementById('add-form'), addInput);
+  ui.bindAccountButton(document.getElementById('account'));
   document.getElementById('open-chat').onclick = () => window.twitch.openWindow('chat');
   document.getElementById('open-browse').onclick = () => window.twitch.openWindow('browse');
 

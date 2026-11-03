@@ -7,13 +7,16 @@ Die App besteht aus drei Fenstern:
 | Fenster | Inhalt |
 |---|---|
 | **Streams** | Zeigt bis zu 4 Streams im Raster (1 = Vollbild, 2 = nebeneinander, 3 = einer groß + zwei klein, 4 = 2×2). Jeder Stream hat oben rechts ein **✕** zum Schließen. Schließt du dieses Fenster, wird die App beendet. |
-| **Chat** | Zeigt die Chats aller offenen Streams, als Tabs oder mit ▥ alle nebeneinander. Neue Streams bekommen automatisch einen Chat. |
+| **Chat** | Zeigt die Chats aller offenen Streams. **Ein Chat**: ein Chat groß, Wechsel über die Tabs. **Splitscreen**: alle Chats gleichzeitig. Je nach Fenstergröße stehen sie nebeneinander, untereinander oder 2×2. Mit ⤢ holst du einen Chat aus dem Splitscreen groß nach vorne. |
 | **Browser** | twitch.tv zum Stöbern. Öffne einen Kanal und klicke **„+ … zum Multi-Stream“**, oder rechtsklicke auf einen Kanal-Link. Das Adressfeld sucht auch auf Twitch. |
 
 Chat und Browser lassen sich schließen und über die Buttons im Stream-Fenster oder mit **Strg+2 / Strg+3** wieder öffnen (das Menü erscheint mit **Alt**).
 Offene Streams und Fensterpositionen werden gespeichert und beim nächsten Start wiederhergestellt.
 
-Wenn du dich im Browser-Fenster oder im Chat bei Twitch anmeldest, gilt die Anmeldung für alle Fenster. Danach kannst du direkt mitschreiben.
+### Anmelden
+
+Bist du beim Start nicht angemeldet, fragt dich ein kleines Fenster: **Bei Twitch anmelden** oder **Als Gast fortfahren**. Die Frage lässt sich mit „Beim Start nicht mehr fragen“ abschalten und im Menü *Konto* wieder einschalten.
+Die Anmeldung gilt für die ganze App (Streams, Chats, Browser). Über den Button **Anmelden** bzw. **● deinname** im Stream- und Chat-Fenster meldest du dich jederzeit an oder ab.
 
 ## Download
 
