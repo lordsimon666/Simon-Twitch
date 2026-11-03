@@ -36,7 +36,6 @@ jobs:
             files: |
               dist/*.AppImage
               dist/*.deb
-              dist/*.rpm
               dist/*.flatpak
     runs-on: ${{ matrix.os }}
     steps:
@@ -49,12 +48,12 @@ jobs:
 
       - run: npm ci
 
-      # rpm (Fedora/Bazzite) und Flatpak (Bazzite, SteamOS, alle Distributionen) brauchen eigene Werkzeuge
-      - name: Linux-Werkzeuge installieren
+      # Flatpak (Bazzite, SteamOS, alle Distributionen) braucht eigene Werkzeuge
+      - name: Flatpak-Werkzeuge installieren
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y rpm flatpak flatpak-builder
+          sudo apt-get install -y flatpak flatpak-builder
           flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
       - name: Paket bauen
@@ -85,3 +84,39 @@ jobs:
           files: ${{ matrix.files }}
           # Nur ein Job erzeugt die Release-Notizen, sonst stehen sie doppelt drin
           generate_release_notes: ${{ matrix.name == 'linux' }}
+
+  # Die .rpm (Fedora, Bazzite) wird in einem echten Fedora-System gebaut –
+  # rpmbuild unter Ubuntu kommt mit dem Paket nicht zurecht.
+  rpm:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - name: Werkzeuge installieren
+        run: dnf install -y nodejs npm git rpm-build libxcrypt-compat findutils
+
+      - uses: actions/checkout@v4
+
+      - run: npm ci
+
+      - name: Paket bauen
+        run: npm run dist:rpm
+
+      - name: Als Build-Artefakt hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: simon-twitch-fedora
+          path: dist/*.rpm
+          if-no-files-found: error
+
+      - name: Version lesen
+        id: version
+        run: echo "tag=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: An GitHub-Release anhängen
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Simon Twitch ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || steps.version.outputs.tag }}
+          files: dist/*.rpm

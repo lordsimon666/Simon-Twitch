@@ -8,8 +8,8 @@
   "scripts": {
     "start": "electron .",
     "dist:win": "electron-builder --win --publish never",
-    "dist:linux": "electron-builder --linux AppImage deb flatpak --publish never && npm run dist:rpm",
-    "dist:rpm": "electron-builder --linux rpm --publish never -c.productName=Simon-Twitch"
+    "dist:linux": "electron-builder --linux AppImage deb flatpak --publish never",
+    "dist:rpm": "electron-builder --linux rpm --publish never"
   },
   "devDependencies": {
     "electron": "^33.2.1",
