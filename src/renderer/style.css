@@ -204,3 +204,7 @@ button.big { padding: 10px 14px; font-size: 14px; font-weight: 600; }
 .segmented button + button { border-left: 1px solid var(--border); }
 .segmented button.active { background: var(--accent); color: #fff; }
 .segmented button:disabled { opacity: .45; }
+
+/* Umschalt-Buttons (Chat/Browser): hervorgehoben, solange das Fenster offen ist */
+button.on { background: #3a2a5c; border-color: var(--accent); color: #fff; }
+button.on:hover { background: #48347a; }

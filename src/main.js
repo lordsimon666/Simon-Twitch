@@ -161,11 +161,35 @@ function createWindow(name) {
   });
   win.on('closed', () => {
     windows[name] = null;
+    sendWindowState();
     if (name === 'streams') app.quit();
   });
+  for (const ev of ['show', 'hide', 'minimize', 'restore']) win.on(ev, sendWindowState);
 
   windows[name] = win;
   return win;
+}
+
+// Ist ein Fenster gerade sichtbar (offen und nicht minimiert)?
+function isOpen(name) {
+  const win = windows[name];
+  return Boolean(win && !win.isDestroyed() && win.isVisible() && !win.isMinimized());
+}
+
+function windowState() {
+  return { chat: isOpen('chat'), browse: isOpen('browse') };
+}
+
+// Damit die Buttons im Stream-Fenster zeigen, welche Fenster offen sind
+function sendWindowState() {
+  const win = windows.streams;
+  if (win && !win.isDestroyed()) win.webContents.send('windows:state', windowState());
+}
+
+// Buttons "Chat" / "Browser": offenes Fenster schließen (verstecken), sonst öffnen
+function toggleWindow(name) {
+  if (name !== 'streams' && isOpen(name)) windows[name].hide();
+  else createWindow(name);
 }
 
 // ---------------------------------------------------------------------------
@@ -404,6 +428,10 @@ ipcMain.handle('config:get', () => ({ maxStreams: MAX_STREAMS, parent: 'localhos
 ipcMain.on('window:open', (_e, name) => {
   if (name in windows) createWindow(name);
 });
+ipcMain.on('window:toggle', (_e, name) => {
+  if (name in windows) toggleWindow(name);
+});
+ipcMain.handle('windows:get', () => windowState());
 
 // ---------------------------------------------------------------------------
 // Twitch-URLs
@@ -594,8 +622,8 @@ function buildMenu() {
       label: 'Fenster',
       submenu: [
         { label: 'Streams', accelerator: 'CmdOrCtrl+1', click: () => createWindow('streams') },
-        { label: 'Chat', accelerator: 'CmdOrCtrl+2', click: () => createWindow('chat') },
-        { label: 'Browser', accelerator: 'CmdOrCtrl+3', click: () => createWindow('browse') },
+        { label: 'Chat ein/aus', accelerator: 'CmdOrCtrl+2', click: () => toggleWindow('chat') },
+        { label: 'Browser ein/aus', accelerator: 'CmdOrCtrl+3', click: () => toggleWindow('browse') },
         { type: 'separator' },
         { label: 'Neu laden', role: 'reload' },
         { label: 'Vollbild', role: 'togglefullscreen' },

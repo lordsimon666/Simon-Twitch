@@ -10,8 +10,19 @@
 
   ui.bindAddForm(document.getElementById('add-form'), addInput);
   ui.bindAccountButton(document.getElementById('account'));
-  document.getElementById('open-chat').onclick = () => window.twitch.openWindow('chat');
-  document.getElementById('open-browse').onclick = () => window.twitch.openWindow('browse');
+  // Chat-/Browser-Button: Fenster ein- und ausblenden; ein offenes Fenster wird hervorgehoben
+  const chatBtn = document.getElementById('open-chat');
+  const browseBtn = document.getElementById('open-browse');
+  chatBtn.onclick = () => window.twitch.toggleWindow('chat');
+  browseBtn.onclick = () => window.twitch.toggleWindow('browse');
+  const showWindowState = (st) => {
+    chatBtn.classList.toggle('on', st.chat);
+    browseBtn.classList.toggle('on', st.browse);
+    chatBtn.title = `Chat-Fenster ${st.chat ? 'schließen' : 'öffnen'} (Strg+2)`;
+    browseBtn.title = `Browser-Fenster ${st.browse ? 'schließen' : 'öffnen'} (Strg+3)`;
+  };
+  window.twitch.onWindowState(showWindowState);
+  window.twitch.getWindowState().then(showWindowState);
 
   function createTile(channel) {
     const tile = document.createElement('div');

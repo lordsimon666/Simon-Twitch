@@ -12,7 +12,7 @@ Die App besteht aus drei Fenstern:
 | **Chat** | Zeigt die Chats aller offenen Streams. **Ein Chat**: ein Chat groß, Wechsel über die Tabs. **Splitscreen**: alle Chats gleichzeitig. Je nach Fenstergröße stehen sie nebeneinander, untereinander oder 2×2. Mit ⤢ holst du einen Chat aus dem Splitscreen groß nach vorne. |
 | **Browser** | twitch.tv zum Stöbern. Öffne einen Kanal und klicke **„+ … zum Multi-Stream“**, oder rechtsklicke auf einen Kanal-Link. Das Adressfeld sucht auch auf Twitch. |
 
-Chat und Browser lassen sich schließen und über die Buttons im Stream-Fenster oder mit **Strg+2 / Strg+3** wieder öffnen (das Menü erscheint mit **Alt**).
+Die Buttons **Chat** und **Browser** im Stream-Fenster (oder **Strg+2 / Strg+3**) öffnen und schließen das jeweilige Fenster. Solange ein Fenster offen ist, ist sein Button lila hervorgehoben. Das Menü erscheint mit **Alt**.
 Offene Streams und Fensterpositionen werden gespeichert und beim nächsten Start wiederhergestellt.
 
 ### Raids

@@ -1,7 +1,7 @@
 {
   "name": "simon-twitch",
   "productName": "Simon Twitch",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Multi-Stream Twitch Client: bis zu 4 Streams, Chat- und Browser-Fenster",
   "main": "src/main.js",
   "license": "MIT",
