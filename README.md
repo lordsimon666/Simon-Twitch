@@ -15,6 +15,15 @@ Die App besteht aus drei Fenstern:
 Die Buttons **Chat** und **Browser** im Stream-Fenster (oder **Strg+2 / Strg+3**) öffnen und schließen das jeweilige Fenster. Solange ein Fenster offen ist, ist sein Button lila hervorgehoben. Das Menü erscheint mit **Alt**.
 Offene Streams und Fensterpositionen werden gespeichert und beim nächsten Start wiederhergestellt.
 
+### Wiedergabe
+
+- **Autostart:** Neue Streams starten sofort mit Ton, ohne Klick.
+- **Qualität Auto:** Die Qualität steht automatisch auf „Auto“ und passt sich deiner Verbindung an.
+- **Weiterspielen nach Verbindungsabbruch:** Bleibt ein Stream hängen oder pausiert er wegen einer Störung, startet ihn die App neu. Ist das Internet zurück, verbinden hängende Streams sofort neu. Pausierst du einen Stream selbst, bleibt er pausiert.
+- **Automatisch neu verbinden (Kanalpunkte):** Standardmäßig werden alle Streams und Chats **jede Stunde** nacheinander neu verbunden. Das hilft gegen den Fehler, dass Twitch nach längerer Zeit keine Kanalpunkte mehr vergibt. Einstellbar unter *Streams → Automatisch neu verbinden* (Nie / 30 Min. / 1 Std. / 2 Std.); **Strg+R** verbindet sofort neu.
+
+Alles lässt sich im Menü *Streams* ein- und ausschalten (Menü mit **Alt**).
+
 ### Raids
 
 Raidet ein Kanal, den du gerade schaust, wechselt seine Kachel samt Chat an derselben Stelle automatisch zum Ziel-Kanal. Kurz vorher erscheint ein Hinweis.

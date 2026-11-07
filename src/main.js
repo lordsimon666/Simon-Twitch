@@ -23,7 +23,10 @@ let baseUrl = null;
 // Persistenter Zustand (Kanäle + Fensterpositionen)
 // ---------------------------------------------------------------------------
 const statePath = () => path.join(app.getPath('userData'), 'state.json');
-let state = { channels: [], bounds: {}, skipLoginPrompt: false, followRaids: true };
+let state = {
+  channels: [], bounds: {}, skipLoginPrompt: false, followRaids: true,
+  autoQuality: true, autoResume: true, reconnectMinutes: 60,
+};
 
 function loadState() {
   try {
@@ -34,6 +37,9 @@ function loadState() {
     state.bounds = data.bounds && typeof data.bounds === 'object' ? data.bounds : {};
     state.skipLoginPrompt = data.skipLoginPrompt === true;
     state.followRaids = data.followRaids !== false;
+    state.autoQuality = data.autoQuality !== false;
+    state.autoResume = data.autoResume !== false;
+    state.reconnectMinutes = [0, 30, 60, 120].includes(data.reconnectMinutes) ? data.reconnectMinutes : 60;
   } catch {
     /* erster Start oder defekte Datei */
   }
@@ -424,7 +430,38 @@ ipcMain.handle('channels:replace', (_e, from, to) => {
   followRaid(from, parsed.channel);
   return { ok: true, channels: state.channels };
 });
-ipcMain.handle('config:get', () => ({ maxStreams: MAX_STREAMS, parent: 'localhost' }));
+ipcMain.handle('config:get', () => ({ maxStreams: MAX_STREAMS, parent: 'localhost', settings: playerSettings() }));
+
+// ---------------------------------------------------------------------------
+// Wiedergabe-Einstellungen und regelmäßiges Neuverbinden
+// ---------------------------------------------------------------------------
+function playerSettings() {
+  return { autoQuality: state.autoQuality, autoResume: state.autoResume, reconnectMinutes: state.reconnectMinutes };
+}
+
+function setSetting(key, value) {
+  state[key] = value;
+  saveState();
+  sendAll('settings:changed', playerSettings());
+  if (key === 'reconnectMinutes') scheduleReconnect();
+}
+
+// Twitch vergibt Kanalpunkte nach längerer Laufzeit manchmal nicht mehr. Ein
+// regelmäßiges Neuladen von Playern und Chats baut die Verbindungen frisch auf.
+let reconnectTimer = null;
+function scheduleReconnect() {
+  clearTimeout(reconnectTimer);
+  if (!state.reconnectMinutes) return;
+  reconnectTimer = setTimeout(() => {
+    if (state.channels.length) sendAll('streams:reconnect');
+    scheduleReconnect();
+  }, state.reconnectMinutes * 60 * 1000);
+}
+
+function reconnectNow() {
+  sendAll('streams:reconnect');
+  scheduleReconnect();
+}
 ipcMain.on('window:open', (_e, name) => {
   if (name in windows) createWindow(name);
 });
@@ -530,7 +567,13 @@ function buildContextMenu(contents, params) {
   if (frameChannel && state.channels.includes(frameChannel)) {
     sep();
     items.push(
-      { label: `${frameChannel}: neu laden`, click: () => params.frame?.reload() },
+      {
+        label: `${frameChannel}: neu laden`,
+        click: () => {
+          if (contents === windows.streams?.webContents) contents.send('tile:reload', frameChannel);
+          else params.frame?.reload();
+        },
+      },
       { label: `${frameChannel}: auf twitch.tv öffnen`, click: () => openInBrowser(`https://www.twitch.tv/${frameChannel}`) },
       { label: `${frameChannel}: schließen`, click: () => removeChannel(frameChannel) },
     );
@@ -625,7 +668,7 @@ function buildMenu() {
         { label: 'Chat ein/aus', accelerator: 'CmdOrCtrl+2', click: () => toggleWindow('chat') },
         { label: 'Browser ein/aus', accelerator: 'CmdOrCtrl+3', click: () => toggleWindow('browse') },
         { type: 'separator' },
-        { label: 'Neu laden', role: 'reload' },
+        { label: 'Fenster neu laden', role: 'reload', accelerator: 'CmdOrCtrl+Shift+R' },
         { label: 'Vollbild', role: 'togglefullscreen' },
         { label: 'Entwicklertools', role: 'toggleDevTools' },
         { type: 'separator' },
@@ -655,6 +698,29 @@ function buildMenu() {
           checked: state.followRaids,
           click: (item) => { state.followRaids = item.checked; saveState(); },
         },
+        {
+          label: 'Qualität automatisch (Auto)',
+          type: 'checkbox',
+          checked: state.autoQuality,
+          click: (item) => setSetting('autoQuality', item.checked),
+        },
+        {
+          label: 'Nach Verbindungsabbruch automatisch weiterspielen',
+          type: 'checkbox',
+          checked: state.autoResume,
+          click: (item) => setSetting('autoResume', item.checked),
+        },
+        { type: 'separator' },
+        {
+          label: 'Automatisch neu verbinden',
+          submenu: [[0, 'Nie'], [30, 'Alle 30 Minuten'], [60, 'Jede Stunde'], [120, 'Alle 2 Stunden']].map(([min, label]) => ({
+            label,
+            type: 'radio',
+            checked: state.reconnectMinutes === min,
+            click: () => setSetting('reconnectMinutes', min),
+          })),
+        },
+        { label: 'Jetzt alle neu verbinden', accelerator: 'CmdOrCtrl+R', click: () => reconnectNow() },
       ],
     },
     { label: 'Bearbeiten', submenu: [{ role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
@@ -671,6 +737,9 @@ if (!app.requestSingleInstanceLock()) {
   app.on('second-instance', () => createWindow('streams'));
   app.on('before-quit', () => { quitting = true; raids.stop(); });
   app.on('window-all-closed', () => app.quit());
+
+  // Streams sollen beim Hinzufügen sofort mit Ton starten (ohne vorherigen Klick)
+  app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
   // Ohne den "Electron/…"-Zusatz behandelt twitch.tv (Login, Captcha) die App wie einen normalen Chrome
   app.userAgentFallback = app.userAgentFallback
@@ -689,6 +758,7 @@ if (!app.requestSingleInstanceLock()) {
     });
     buildMenu();
     raids.start();
+    scheduleReconnect();
     raids.setChannels(state.channels);
     if (auth.loggedIn || state.skipLoginPrompt) openMain();
     else createLoginWindow();

@@ -6,7 +6,10 @@
   const count = document.getElementById('count');
   const addBtn = document.getElementById('add-btn');
   const addInput = document.getElementById('add-input');
-  const { maxStreams, parent } = await window.twitch.getConfig();
+  const { maxStreams, parent, settings } = await window.twitch.getConfig();
+  StreamPlayer.configure({ parent, settings });
+  window.twitch.onSettings((st) => StreamPlayer.configure({ settings: st }));
+  const players = new Map();   // Kanal -> StreamPlayer
 
   ui.bindAddForm(document.getElementById('add-form'), addInput);
   ui.bindAccountButton(document.getElementById('account'));
@@ -28,10 +31,8 @@
     const tile = document.createElement('div');
     tile.className = 'tile';
 
-    const frame = document.createElement('iframe');
-    frame.src = `https://player.twitch.tv/?channel=${encodeURIComponent(channel)}&parent=${parent}&autoplay=true&muted=false`;
-    frame.allow = 'autoplay; fullscreen; encrypted-media; picture-in-picture';
-    frame.allowFullscreen = true;
+    const host = document.createElement('div');
+    host.className = 'player-host';
 
     const label = document.createElement('div');
     label.className = 'label';
@@ -44,12 +45,19 @@
     close.textContent = '✕';
     close.onclick = () => window.twitch.removeChannel(channel);
 
-    tile.append(frame, label, close);
+    tile.append(host, label, close);
+    players.set(channel, StreamPlayer.create(channel, host));
     return tile;
   }
 
   function render(channels) {
     ui.syncList(grid, channels, createTile);
+    for (const [channel, player] of players) {
+      if (!channels.includes(channel)) {
+        player.destroy();
+        players.delete(channel);
+      }
+    }
     grid.className = `grid count-${channels.length}`;
     grid.style.display = channels.length ? '' : 'none';
     empty.style.display = channels.length ? 'none' : '';
@@ -68,6 +76,24 @@
     const links = text.split(/\r?\n/).filter((l) => l && !l.startsWith('#')).join(' ');
     if (links) ui.add(links);
   });
+
+  // Klicks in einen Player erkennen (Fokus wandert ins iframe). So wird eine
+  // absichtlich pausierte Kachel nicht automatisch wieder gestartet.
+  window.addEventListener('blur', () => {
+    const frame = document.activeElement;
+    if (frame?.tagName !== 'IFRAME') return;
+    const tile = frame.closest('.tile');
+    if (tile) tile._lastClick = Date.now();
+    // Fokus zurückholen, damit auch der nächste Klick erkannt wird
+    setTimeout(() => { if (document.activeElement === frame) frame.blur(); }, 800);
+  });
+
+  // Stündliches (einstellbares) Neuverbinden und Rechtsklick → "neu laden"
+  window.twitch.onReconnect(() => {
+    StreamPlayer.reconnectAll();
+    ui.toast('Streams werden neu verbunden …');
+  });
+  window.twitch.onTileReload((channel) => players.get(channel)?.rebuild());
 
   window.twitch.onChannels(render);
   render(await window.twitch.getChannels());

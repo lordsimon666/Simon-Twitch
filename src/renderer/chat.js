@@ -95,6 +95,13 @@
   }
 
   ui.bindAccountButton(document.getElementById('account'));
+
+  // Regelmäßiges Neuverbinden: Chats nacheinander neu laden
+  window.twitch.onReconnect(() => {
+    [...chats.querySelectorAll('iframe')].forEach((frame, i) => {
+      setTimeout(() => { frame.src = frame.src; }, i * 5000);
+    });
+  });
   singleBtn.onclick = () => setMode('single');
   splitBtn.onclick = () => setMode('split');
   new ResizeObserver(layoutSplit).observe(chats);

@@ -15,6 +15,9 @@ contextBridge.exposeInMainWorld('twitch', {
   onChannels: (cb) => ipcRenderer.on('channels:changed', (_e, channels) => cb(channels)),
   onToast: (cb) => ipcRenderer.on('toast', (_e, msg) => cb(msg)),
   onViewReload: (cb) => ipcRenderer.on('view:reload', () => cb()),
+  onSettings: (cb) => ipcRenderer.on('settings:changed', (_e, st) => cb(st)),
+  onReconnect: (cb) => ipcRenderer.on('streams:reconnect', () => cb()),
+  onTileReload: (cb) => ipcRenderer.on('tile:reload', (_e, channel) => cb(channel)),
   onViewLoad: (cb) => ipcRenderer.on('view:load', (_e, url) => cb(url)),
 
   // Anmeldung (für die ganze App)
