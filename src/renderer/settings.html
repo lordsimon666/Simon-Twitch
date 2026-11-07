@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Simon Twitch – Einstellungen</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="settings">
+  <main class="settings-page">
+    <h1>Einstellungen</h1>
+
+    <section class="card">
+      <h2>Wiedergabe</h2>
+      <label class="row switch-row"><span>Qualität automatisch („Auto“)</span><input type="checkbox" class="switch" data-setting="autoQuality"></label>
+      <label class="row switch-row"><span>Nach Verbindungsabbruch automatisch weiterspielen</span><input type="checkbox" class="switch" data-setting="autoResume"></label>
+      <label class="row switch-row"><span>Raids automatisch folgen</span><input type="checkbox" class="switch" data-setting="followRaids"></label>
+      <label class="row switch-row"><span>Automatisch neu verbinden (gegen fehlende Kanalpunkte)</span>
+        <select data-setting="reconnectMinutes">
+          <option value="0">Nie</option>
+          <option value="30">Alle 30 Minuten</option>
+          <option value="60">Jede Stunde</option>
+          <option value="120">Alle 2 Stunden</option>
+        </select>
+      </label>
+      <label class="row switch-row"><span>Beim Start nach Anmeldung fragen</span><input type="checkbox" class="switch" data-setting="askLogin"></label>
+    </section>
+
+    <section class="card" id="al-card">
+      <div class="card-head">
+        <h2>Auto-Level <small>Lautstärke-Automatik</small></h2>
+        <input type="checkbox" class="switch big" id="al-enabled" title="Auto-Level ein/aus (Strg+L)">
+      </div>
+      <p class="muted small">Gleicht laute und leise Streams automatisch an: Auto-Gain regelt auf einen Ziel-Pegel, der Kompressor glättet Spitzen, der Limiter verhindert Übersteuern. Der Lautstärkeregler im Player funktioniert weiterhin normal.</p>
+
+      <div class="presets">
+        <span class="muted">Presets:</span>
+        <button type="button" data-preset="sanft">Sanft</button>
+        <button type="button" data-preset="standard">Standard</button>
+        <button type="button" data-preset="stark">Stark</button>
+        <button type="button" data-preset="nacht">Nachtmodus</button>
+        <span class="spacer"></span>
+        <button type="button" id="al-reset" title="Alle Werte auf Standard zurücksetzen">Zurücksetzen</button>
+      </div>
+
+      <div class="stage">
+        <div class="stage-head"><h3>1 · Auto-Gain (AGC)</h3><input type="checkbox" class="switch" data-al="agcEnabled"></div>
+        <div class="param" data-key="target" data-unit="dBFS" data-step="0.5" data-label="Ziel-Pegel"></div>
+        <div class="param" data-key="maxBoost" data-unit="dB" data-step="0.5" data-label="Max. Anhebung"></div>
+        <div class="param" data-key="maxCut" data-unit="dB" data-step="0.5" data-label="Max. Absenkung"></div>
+        <div class="param" data-key="agcAttack" data-unit="ms" data-step="10" data-label="Attack"></div>
+        <div class="param" data-key="agcRelease" data-unit="ms" data-step="50" data-label="Release"></div>
+        <div class="param" data-key="gate" data-unit="dBFS" data-step="1" data-label="Gate (Stille)"></div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-head"><h3>2 · Kompressor</h3><input type="checkbox" class="switch" data-al="compEnabled"></div>
+        <div class="param" data-key="threshold" data-unit="dB" data-step="0.5" data-label="Threshold"></div>
+        <div class="param" data-key="ratio" data-unit=": 1" data-step="0.1" data-label="Ratio"></div>
+        <div class="param" data-key="knee" data-unit="dB" data-step="0.5" data-label="Knee"></div>
+        <div class="param" data-key="attack" data-unit="ms" data-step="0.5" data-label="Attack"></div>
+        <div class="param" data-key="release" data-unit="ms" data-step="5" data-label="Release"></div>
+        <div class="param" data-key="makeup" data-unit="dB" data-step="0.5" data-label="Make-up-Gain"></div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-head"><h3>3 · Limiter</h3><input type="checkbox" class="switch" data-al="limEnabled"></div>
+        <div class="param" data-key="ceiling" data-unit="dBFS" data-step="0.1" data-label="Ceiling"></div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-head"><h3>Pegel live</h3></div>
+        <div id="meters"><p class="muted small">Schalte Auto-Level ein, um die Pegel der laufenden Streams zu sehen.</p></div>
+      </div>
+    </section>
+  </main>
+  <script src="common.js"></script>
+  <script src="settings.js"></script>
+</body>
+</html>

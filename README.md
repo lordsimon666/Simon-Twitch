@@ -24,6 +24,21 @@ Offene Streams und Fensterpositionen werden gespeichert und beim nächsten Start
 
 Alles lässt sich im Menü *Streams* ein- und ausschalten (Menü mit **Alt**).
 
+### Einstellungen und Auto-Level
+
+Das Zahnrad **⚙** im Stream-Fenster (oder **Strg+,**) öffnet die Einstellungen. Dort findest du alle Wiedergabe-Optionen und das **Auto-Level**, eine Lautstärke-Automatik wie in einem Profi-Audio-Tool. Es ist **standardmäßig aus** und lässt sich dort oder mit **Strg+L** ein- und ausschalten.
+
+Die Kette hat drei Stufen, jede einzeln abschaltbar:
+
+| Stufe | Einstellungen |
+|---|---|
+| **1 · Auto-Gain (AGC)** | Ziel-Pegel (dBFS, gemessen am Ausgang), max. Anhebung, max. Absenkung, Attack, Release, Gate (unterhalb wird Stille nicht angehoben) |
+| **2 · Kompressor** | Threshold, Ratio, Knee, Attack, Release, Make-up-Gain |
+| **3 · Limiter** | Ceiling (dBFS) |
+
+Dazu gibt es die Presets *Sanft, Standard, Stark* und *Nachtmodus* und eine **Live-Pegelanzeige** je Stream (Eingang, Auto-Gain, Kompressor- und Limiter-Absenkung, Ausgang).
+Der Lautstärkeregler im Twitch-Player funktioniert weiterhin normal, denn das Auto-Level rechnet ihn vorher heraus und danach wieder hinein.
+
 ### Raids
 
 Raidet ein Kanal, den du gerade schaust, wechselt seine Kachel samt Chat an derselben Stelle automatisch zum Ziel-Kanal. Kurz vorher erscheint ein Hinweis.

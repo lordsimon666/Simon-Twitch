@@ -209,3 +209,59 @@ button.big { padding: 10px 14px; font-size: 14px; font-weight: 600; }
 /* Umschalt-Buttons (Chat/Browser): hervorgehoben, solange das Fenster offen ist */
 button.on { background: #3a2a5c; border-color: var(--accent); color: #fff; }
 button.on:hover { background: #48347a; }
+
+/* ---------- Einstellungen ---------- */
+body.settings { overflow-y: auto; display: block; }
+.settings-page { max-width: 620px; margin: 0 auto; padding: 16px; }
+.settings-page h1 { font-size: 20px; margin: 4px 0 14px; }
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; }
+.card h2 { font-size: 15px; margin: 0 0 10px; }
+.card h2 small { color: var(--muted); font-weight: 400; margin-left: 6px; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.card-head h2 { margin: 0; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 0; border-top: 1px solid var(--border); cursor: pointer; }
+.row:first-of-type { border-top: 0; }
+select { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; }
+
+/* Schalter */
+input.switch { appearance: none; width: 36px; height: 20px; border-radius: 10px; background: #3a3a40; position: relative; cursor: pointer; flex: 0 0 auto; transition: background .15s; margin: 0; }
+input.switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: left .15s; }
+input.switch:checked { background: var(--accent); }
+input.switch:checked::after { left: 18px; }
+input.switch.big { width: 46px; height: 26px; border-radius: 13px; }
+input.switch.big::after { width: 22px; height: 22px; }
+input.switch.big:checked::after { left: 22px; }
+
+.presets { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 4px; }
+.presets .spacer { flex: 1; }
+.stage { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 10px; transition: opacity .15s; }
+.stage-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.stage h3 { font-size: 13px; margin: 0; color: var(--text); }
+.stage.bypassed .param { opacity: .4; }
+#al-card.off .stage, #al-card.off .presets { opacity: .55; }
+
+.param { display: grid; grid-template-columns: 120px 1fr 118px; align-items: center; gap: 10px; padding: 3px 0; }
+.param label { color: var(--muted); }
+.param input[type=range] { width: 100%; accent-color: var(--accent); }
+.param .num { display: flex; align-items: center; gap: 4px; }
+.param input[type=number] { width: 72px; background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 3px 5px; text-align: right; }
+.param em { color: var(--muted); font-style: normal; font-size: 12px; white-space: nowrap; }
+
+/* Pegelanzeige */
+.meter { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; margin-top: 8px; }
+.meter-name { font-weight: 600; margin-bottom: 4px; }
+.meter-row { display: grid; grid-template-columns: 80px 1fr 92px; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); padding: 1px 0; }
+.meter-row em { font-style: normal; text-align: right; font-variant-numeric: tabular-nums; color: var(--text); }
+.bar { position: relative; height: 8px; background: #26262c; border-radius: 4px; overflow: hidden; }
+.bar i { position: absolute; top: 0; bottom: 0; left: 0; background: linear-gradient(90deg, #2fbf71, #e6c02a 80%, #e91916); transition: width .2s linear; }
+.bar.out i { background: linear-gradient(90deg, #4a8cff, #9147ff); }
+.bar.gr i { left: auto; right: 0; background: #e6872a; }
+.bar.center::before { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: #55555c; }
+.bar.center i.pos { background: #2fbf71; }
+.bar.center i.neg { background: #e6872a; }
+.bar b { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #fff; opacity: .7; }
+
+@media (max-width: 480px) {
+  .param { grid-template-columns: 1fr 104px; }
+  .param input[type=range] { grid-column: 1 / -1; grid-row: 2; }
+}

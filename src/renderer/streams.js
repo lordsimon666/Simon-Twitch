@@ -18,6 +18,7 @@
   const browseBtn = document.getElementById('open-browse');
   chatBtn.onclick = () => window.twitch.toggleWindow('chat');
   browseBtn.onclick = () => window.twitch.toggleWindow('browse');
+  document.getElementById('open-settings').onclick = () => window.twitch.openWindow('settings');
   const showWindowState = (st) => {
     chatBtn.classList.toggle('on', st.chat);
     browseBtn.classList.toggle('on', st.browse);

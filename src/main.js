@@ -7,6 +7,7 @@
 const { app, BrowserWindow, ipcMain, Menu, shell, screen, session, clipboard } = require('electron');
 const http = require('http');
 const { RaidWatcher } = require('./raids');
+const autolevel = require('./autolevel');
 const fs = require('fs');
 const path = require('path');
 
@@ -26,6 +27,7 @@ const statePath = () => path.join(app.getPath('userData'), 'state.json');
 let state = {
   channels: [], bounds: {}, skipLoginPrompt: false, followRaids: true,
   autoQuality: true, autoResume: true, reconnectMinutes: 60,
+  autoLevel: autolevel.sanitize(null),
 };
 
 function loadState() {
@@ -40,6 +42,7 @@ function loadState() {
     state.autoQuality = data.autoQuality !== false;
     state.autoResume = data.autoResume !== false;
     state.reconnectMinutes = [0, 30, 60, 120].includes(data.reconnectMinutes) ? data.reconnectMinutes : 60;
+    state.autoLevel = autolevel.sanitize(data.autoLevel);
   } catch {
     /* erster Start oder defekte Datei */
   }
@@ -96,7 +99,7 @@ function startServer() {
 // ---------------------------------------------------------------------------
 // Fenster
 // ---------------------------------------------------------------------------
-const windows = { streams: null, chat: null, browse: null };
+const windows = { streams: null, chat: null, browse: null, settings: null };
 let quitting = false;
 
 function defaultBounds(name) {
@@ -109,6 +112,11 @@ function defaultBounds(name) {
       return { x: workArea.x, y: workArea.y, width: streamW, height: streamH };
     case 'chat':
       return { x: workArea.x + streamW, y: workArea.y, width: chatW, height: workArea.height };
+    case 'settings': {
+      const width = Math.min(620, workArea.width);
+      const height = Math.min(860, workArea.height);
+      return { x: workArea.x + Math.round((workArea.width - width) / 2), y: workArea.y + Math.round((workArea.height - height) / 2), width, height };
+    }
     default:
       return { x: workArea.x, y: workArea.y + streamH, width: streamW, height: workArea.height - streamH };
   }
@@ -126,7 +134,7 @@ function createWindow(name) {
     return windows[name];
   }
 
-  const titles = { streams: 'Simon Twitch – Streams', chat: 'Simon Twitch – Chat', browse: 'Simon Twitch – Browser' };
+  const titles = { streams: 'Simon Twitch – Streams', chat: 'Simon Twitch – Chat', browse: 'Simon Twitch – Browser', settings: 'Simon Twitch – Einstellungen' };
   const saved = state.bounds[name];
   const bounds = saved && boundsVisible(saved) ? saved : defaultBounds(name);
 
@@ -436,14 +444,78 @@ ipcMain.handle('config:get', () => ({ maxStreams: MAX_STREAMS, parent: 'localhos
 // Wiedergabe-Einstellungen und regelmäßiges Neuverbinden
 // ---------------------------------------------------------------------------
 function playerSettings() {
-  return { autoQuality: state.autoQuality, autoResume: state.autoResume, reconnectMinutes: state.reconnectMinutes };
+  return {
+    autoQuality: state.autoQuality,
+    autoResume: state.autoResume,
+    reconnectMinutes: state.reconnectMinutes,
+    followRaids: state.followRaids,
+    skipLoginPrompt: state.skipLoginPrompt,
+  };
 }
 
+const SETTING_KEYS = {
+  autoQuality: 'boolean', autoResume: 'boolean', followRaids: 'boolean', skipLoginPrompt: 'boolean', reconnectMinutes: 'number',
+};
+
 function setSetting(key, value) {
+  if (!(key in SETTING_KEYS) || typeof value !== SETTING_KEYS[key]) return;
+  if (key === 'reconnectMinutes' && ![0, 30, 60, 120].includes(value)) return;
   state[key] = value;
   saveState();
   sendAll('settings:changed', playerSettings());
+  buildMenu();                       // Häkchen im Menü aktuell halten
   if (key === 'reconnectMinutes') scheduleReconnect();
+}
+
+ipcMain.handle('settings:get', () => ({ ...playerSettings(), autoLevel: state.autoLevel, presets: autolevel.PRESETS, autoLevelDefaults: autolevel.DEFAULTS }));
+ipcMain.on('settings:set', (_e, key, value) => setSetting(key, value));
+
+// ---------------------------------------------------------------------------
+// Auto-Level: Kette in die Player-Frames des Stream-Fensters einsetzen
+// ---------------------------------------------------------------------------
+function setAutoLevel(cfg) {
+  state.autoLevel = autolevel.sanitize(cfg);
+  saveState();
+  sendAll('autolevel:changed', state.autoLevel);
+  buildMenu();
+  applyAutoLevel();
+  return state.autoLevel;
+}
+ipcMain.handle('autolevel:set', (_e, cfg) => setAutoLevel(cfg));
+
+function playerFrames() {
+  const win = windows.streams;
+  if (!win || win.isDestroyed()) return [];
+  try {
+    return win.webContents.mainFrame.framesInSubtree.filter((f) => /^https:\/\/player\.twitch\.tv\//.test(f.url));
+  } catch {
+    return [];
+  }
+}
+
+// Setzt bzw. aktualisiert die Kette in allen Playern; liefert Messwerte je Kanal
+async function applyAutoLevel() {
+  const code = autolevel.script(state.autoLevel);
+  return Promise.all(playerFrames().map(async (frame) => {
+    let channel = '?';
+    try { channel = new URL(frame.url).searchParams.get('channel') || '?'; } catch { /* egal */ }
+    try {
+      const stats = await frame.executeJavaScript(code, true);
+      return { channel, stats: Array.isArray(stats) ? stats[0] || null : null };
+    } catch {
+      return { channel, stats: null };
+    }
+  }));
+}
+
+// Regelmäßig nachziehen (neue Player, neu verbundene Kacheln). Bei offenem
+// Einstellungsfenster öfter, damit die Pegelanzeige flüssig läuft.
+async function autoLevelLoop() {
+  const meterVisible = Boolean(windows.settings && !windows.settings.isDestroyed() && windows.settings.isVisible());
+  let results = [];
+  try { results = await applyAutoLevel(); } catch { /* weiter */ }
+  if (meterVisible) windows.settings.webContents.send('autolevel:stats', results);
+  setTimeout(autoLevelLoop, meterVisible ? 250 : 2000);
 }
 
 // Twitch vergibt Kanalpunkte nach längerer Laufzeit manchmal nicht mehr. Ein
@@ -665,6 +737,7 @@ function buildMenu() {
       label: 'Fenster',
       submenu: [
         { label: 'Streams', accelerator: 'CmdOrCtrl+1', click: () => createWindow('streams') },
+        { label: 'Einstellungen …', accelerator: 'CmdOrCtrl+,', click: () => createWindow('settings') },
         { label: 'Chat ein/aus', accelerator: 'CmdOrCtrl+2', click: () => toggleWindow('chat') },
         { label: 'Browser ein/aus', accelerator: 'CmdOrCtrl+3', click: () => toggleWindow('browse') },
         { type: 'separator' },
@@ -685,7 +758,7 @@ function buildMenu() {
           label: 'Beim Start nach Anmeldung fragen',
           type: 'checkbox',
           checked: !state.skipLoginPrompt,
-          click: (item) => { state.skipLoginPrompt = !item.checked; saveState(); },
+          click: (item) => setSetting('skipLoginPrompt', !item.checked),
         },
       ],
     },
@@ -696,7 +769,7 @@ function buildMenu() {
           label: 'Raids automatisch folgen',
           type: 'checkbox',
           checked: state.followRaids,
-          click: (item) => { state.followRaids = item.checked; saveState(); },
+          click: (item) => setSetting('followRaids', item.checked),
         },
         {
           label: 'Qualität automatisch (Auto)',
@@ -721,6 +794,15 @@ function buildMenu() {
           })),
         },
         { label: 'Jetzt alle neu verbinden', accelerator: 'CmdOrCtrl+R', click: () => reconnectNow() },
+        { type: 'separator' },
+        {
+          label: 'Auto-Level (Lautstärke-Automatik)',
+          type: 'checkbox',
+          accelerator: 'CmdOrCtrl+L',
+          checked: state.autoLevel.enabled,
+          click: (item) => setAutoLevel({ ...state.autoLevel, enabled: item.checked }),
+        },
+        { label: 'Auto-Level einstellen …', click: () => createWindow('settings') },
       ],
     },
     { label: 'Bearbeiten', submenu: [{ role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
@@ -759,6 +841,7 @@ if (!app.requestSingleInstanceLock()) {
     buildMenu();
     raids.start();
     scheduleReconnect();
+    autoLevelLoop();
     raids.setChannels(state.channels);
     if (auth.loggedIn || state.skipLoginPrompt) openMain();
     else createLoginWindow();
