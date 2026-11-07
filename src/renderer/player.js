@@ -62,6 +62,8 @@
       this.pausedTicks = 0;
       this.createdAt = Date.now();
       this.qualitySet = false;
+      this.started = false;
+      this.busy = false;
     }
 
     async create(keepPaused = false) {
@@ -96,7 +98,10 @@
           this.player.setVolume(this.volume);
           this.player.setMuted(this.muted);
         }
-        if (!this.manualPause) this.player.play();
+        if (!this.manualPause) {
+          this.player.play();
+          setTimeout(() => this.tick(), 1500);   // gleich prüfen und notfalls Play drücken
+        }
       });
       on(P.PLAYING, () => {
         this.manualPause = false;
@@ -124,6 +129,7 @@
       frame.allow = 'autoplay; fullscreen; encrypted-media; picture-in-picture';
       frame.allowFullscreen = true;
       this.host.appendChild(frame);
+      frame.addEventListener('load', () => setTimeout(() => this.tick(), 2500));
     }
 
     applyQuality() {
@@ -145,41 +151,49 @@
       this.create(this.manualPause);   // absichtlich pausiert? Dann pausiert lassen
     }
 
-    // Wird alle paar Sekunden aufgerufen
-    tick() {
-      if (this.fallback) {
+    // Wird alle paar Sekunden aufgerufen. Fragt den ECHTEN Zustand des Videos im
+    // Player ab (die Twitch-Schnittstelle meldet "spielt" auch bei stehendem Bild).
+    async tick() {
+      if (this.busy) return;
+      this.busy = true;
+      try { await this.check(); } finally { this.busy = false; }
+    }
+
+    async check() {
+      if (this.fallback && navigator.onLine) {
         // Schnittstelle inzwischen erreichbar? Dann aufrüsten.
-        if (navigator.onLine) loadApi().then((ok) => ok && players.has(this) && this.fallback && this.create());
-        return;
+        loadApi().then((ok) => ok && players.has(this) && this.fallback && this.create());
       }
-      if (!settings.autoResume || !this.player) return;
-      if (!this.ready) {
+      // Autostart läuft immer; das Weiterspielen nach Abbrüchen nur, wenn eingeschaltet
+      if (this.started && !settings.autoResume) return;
+      if (!this.fallback && !this.ready) {
         if (Date.now() - this.createdAt > READY_TIMEOUT_MS && navigator.onLine) this.rebuild();
         return;
       }
-      if (this.offline || this.manualPause || !navigator.onLine) return;
+      if (this.offline || !navigator.onLine) return;
 
-      let paused;
-      let time;
-      try {
-        paused = this.player.isPaused();
-        time = this.player.getCurrentTime();
-      } catch {
-        return;
-      }
-      if (paused) {
+      const st = await window.twitch.playerState(this.channel);
+      if (!st || !players.has(this)) return;
+      if (st.paused) {
+        if (this.manualPause) return;              // absichtlich pausiert
         this.pausedTicks += 1;
-        if (this.pausedTicks > PAUSED_TICKS) this.rebuild();
-        else this.player.play();
+        if (this.pausedTicks > PAUSED_TICKS + 2) { // Klicken hilft nicht → neu aufbauen
+          this.rebuild();
+          return;
+        }
+        await window.twitch.kickPlayer(this.channel);   // Play-Taste drücken (zählt als Nutzeraktion)
         return;
       }
       this.pausedTicks = 0;
-      if (time === this.lastTime) {
+      this.started = true;
+      this.applyQuality();
+      if (!settings.autoResume) return;
+      if (st.t === this.lastTime) {
         this.stallTicks += 1;
         if (this.stallTicks >= STALL_TICKS) this.rebuild();   // Bild steht → neu verbinden
       } else {
         this.stallTicks = 0;
-        this.lastTime = time;
+        this.lastTime = st.t;
       }
     }
 
@@ -194,10 +208,9 @@
 
   // Internet wieder da → hängende Kacheln sofort neu verbinden
   window.addEventListener('online', () => {
-    players.forEach((p) => {
-      let playing = false;
-      try { playing = p.player && p.ready && !p.player.isPaused(); } catch { /* egal */ }
-      if (!playing && !p.manualPause) p.rebuild();
+    players.forEach(async (p) => {
+      const st = await window.twitch.playerState(p.channel);
+      if ((!st || st.paused) && !p.manualPause) p.rebuild();
     });
   });
 

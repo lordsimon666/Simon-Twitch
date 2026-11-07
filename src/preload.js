@@ -20,6 +20,8 @@ contextBridge.exposeInMainWorld('twitch', {
   setAutoLevel: (cfg) => ipcRenderer.invoke('autolevel:set', cfg),
   onAutoLevel: (cb) => ipcRenderer.on('autolevel:changed', (_e, cfg) => cb(cfg)),
   onAutoLevelStats: (cb) => ipcRenderer.on('autolevel:stats', (_e, stats) => cb(stats)),
+  playerState: (channel) => ipcRenderer.invoke('player:state', channel),
+  kickPlayer: (channel) => ipcRenderer.invoke('player:kick', channel),
   onSettings: (cb) => ipcRenderer.on('settings:changed', (_e, st) => cb(st)),
   onReconnect: (cb) => ipcRenderer.on('streams:reconnect', () => cb()),
   onTileReload: (cb) => ipcRenderer.on('tile:reload', (_e, channel) => cb(channel)),

@@ -493,6 +493,49 @@ function playerFrames() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Echter Video-Zustand und Start per Klick im Player-Frame
+// ---------------------------------------------------------------------------
+// Die Twitch-Schnittstelle meldet "spielt", auch wenn das Video steht, und der
+// Twitch-Player startet erst nach einer echten Nutzeraktion. Deshalb fragt die
+// App den Zustand direkt am <video>-Element ab und klickt bei Bedarf selbst auf
+// die Play-Taste (executeJavaScript mit userGesture = zählt als Nutzeraktion).
+function playerFrame(channel) {
+  return playerFrames().find((f) => {
+    try { return new URL(f.url).searchParams.get('channel') === channel; } catch { return false; }
+  });
+}
+
+const VIDEO_STATE_JS = `(() => {
+  const v = document.querySelector('video');
+  if (!v) return { paused: true, t: 0, ready: 0, none: true };
+  return { paused: v.paused, t: v.currentTime, ready: v.readyState };
+})()`;
+
+const KICK_JS = `(() => {
+  const q = (s) => document.querySelector(s);
+  // Hinweis auf nicht jugendfreie Inhalte bestätigen
+  const gate = q('[data-a-target="content-classification-gate-overlay-start-watching-button"]') || q('[data-a-target="player-overlay-mature-accept"]');
+  if (gate) { gate.click(); return 'gate'; }
+  const v = q('video');
+  if (v && !v.paused) return 'playing';
+  const btn = q('[data-a-target="player-overlay-play-button"]') || q('[data-a-target="player-play-pause-button"]');
+  if (btn) { btn.click(); return 'clicked'; }
+  if (v) { v.play().catch(() => {}); return 'play'; }
+  return 'none';
+})()`;
+
+ipcMain.handle('player:state', async (_e, channel) => {
+  const frame = playerFrame(channel);
+  if (!frame) return null;
+  try { return await frame.executeJavaScript(VIDEO_STATE_JS); } catch { return null; }
+});
+ipcMain.handle('player:kick', async (_e, channel) => {
+  const frame = playerFrame(channel);
+  if (!frame) return 'no-frame';
+  try { return await frame.executeJavaScript(KICK_JS, true); } catch { return 'error'; }
+});
+
 // Setzt bzw. aktualisiert die Kette in allen Playern; liefert Messwerte je Kanal
 async function applyAutoLevel() {
   const code = autolevel.script(state.autoLevel);
